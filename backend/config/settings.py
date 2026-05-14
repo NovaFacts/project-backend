@@ -81,9 +81,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ingesoft1_db',
-        'USER': 'ingesoft1_user',
-        'PASSWORD': 'DeltaPSQL.ingesoft',  # Reemplaza con la contraseña que usaste en PostgreSQL
+        'NAME': 'app_db',
+        'USER': 'admin',
+        'PASSWORD': 'super_secure_password',
         'HOST': 'localhost',
         'PORT': '5432',
     }
