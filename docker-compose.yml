@@ -1,0 +1,40 @@
+
+services:
+  # Servicio de la base de datos PostgreSQL
+  postgres_db:
+    image: postgres:15
+    container_name: novafacts_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: novafacts_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Epsilon_Delta.0
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Servicio de la aplicación Spring Boot
+  spring_app:
+    build: .
+    container_name: novafacts_backend
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_db:5432/novafacts_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=Epsilon_Delta.0
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+# Volumen persistente para los datos de PostgreSQL
+volumes:
+  postgres_data:

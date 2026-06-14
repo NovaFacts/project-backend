@@ -1,0 +1,31 @@
+package com.novafacts.backend.auth.controller;
+
+import com.novafacts.backend.auth.dto.CreateUserRequest;
+import com.novafacts.backend.auth.dto.UserResponse;
+import com.novafacts.backend.auth.service.UserService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @PostMapping
+    public UserResponse createUser(
+            @RequestBody CreateUserRequest request
+    ) {
+        return userService.createUser(request);
+    }
+
+    @GetMapping
+    public List<UserResponse> getUsers() {
+        return userService.getUsers();
+    }
+}
