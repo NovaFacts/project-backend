@@ -25,9 +25,9 @@ services:
     container_name: novafacts_backend
     restart: always
     ports:
-      - "8081:8081"
+      - "8082:8082"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_db:5432/novafacts_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_db:5434/novafacts_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=Epsilon_Delta.0
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update

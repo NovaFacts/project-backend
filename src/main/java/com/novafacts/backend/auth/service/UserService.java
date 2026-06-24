@@ -25,6 +25,10 @@ public class UserService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
+    
+    public void deleteUser(Long id) {
+    userRepository.deleteById(id);
+    }
 
     public UserResponse createUser(CreateUserRequest request) {
 
