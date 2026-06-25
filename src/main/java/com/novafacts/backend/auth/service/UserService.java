@@ -6,6 +6,7 @@ import com.novafacts.backend.auth.dto.LoginResponse;
 import com.novafacts.backend.auth.dto.CreateUserRequest;
 import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.entity.User;
+import com.novafacts.backend.auth.jwt.JwtService;
 import com.novafacts.backend.auth.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,13 +18,16 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public UserService(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
     
     public void deleteUser(Long id) {
@@ -73,6 +77,7 @@ public class UserService {
         throw new RuntimeException("Contraseña incorrecta");
     }
 
-    return new LoginResponse("Login exitoso");
+    String token = jwtService.generateToken(user.getUsername());
+    return new LoginResponse(token, "Login exitoso");
     }
 }
