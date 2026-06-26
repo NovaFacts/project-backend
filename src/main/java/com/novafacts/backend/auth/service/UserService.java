@@ -2,7 +2,6 @@ package com.novafacts.backend.auth.service;
 
 import com.novafacts.backend.auth.dto.LoginRequest;
 import com.novafacts.backend.auth.dto.LoginResponse;
-
 import com.novafacts.backend.auth.dto.CreateUserRequest;
 import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.entity.User;
@@ -29,55 +28,44 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
-    
+
     public void deleteUser(Long id) {
-    userRepository.deleteById(id);
+        userRepository.deleteById(id);
     }
 
     public UserResponse createUser(CreateUserRequest request) {
-
         User user = new User();
-
         user.setUsername(request.getUsername());
-
-        user.setPassword(
-                passwordEncoder.encode(request.getPassword())
-        );
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setNombre(request.getUsername());
+        user.setRolId(1);
+        user.setActivo(true);
 
         User savedUser = userRepository.save(user);
-
-        return new UserResponse(
-                savedUser.getId(),
-                savedUser.getUsername()
-        );
+        return new UserResponse(savedUser.getId(), savedUser.getUsername());
     }
 
     public List<UserResponse> getUsers() {
-
         return userRepository.findAll()
                 .stream()
-                .map(user -> new UserResponse(
-                        user.getId(),
-                        user.getUsername()
-                ))
+                .map(user -> new UserResponse(user.getId(), user.getUsername()))
                 .toList();
     }
-    
+
     public LoginResponse login(LoginRequest request) {
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
 
-    User user = userRepository.findByUsername(request.getUsername())
-            .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        boolean passwordMatches = passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword()
+        );
 
-    boolean passwordMatches = passwordEncoder.matches(
-            request.getPassword(),
-            user.getPassword()
-    );
+        if (!passwordMatches) {
+            throw new RuntimeException("Contraseña incorrecta");
+        }
 
-    if (!passwordMatches) {
-        throw new RuntimeException("Contraseña incorrecta");
-    }
-
-    String token = jwtService.generateToken(user.getUsername());
-    return new LoginResponse(token, "Login exitoso");
+        String token = jwtService.generateToken(user.getUsername());
+        return new LoginResponse(token, "Login exitoso");
     }
 }
