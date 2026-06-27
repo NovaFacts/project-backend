@@ -1,14 +1,14 @@
 package com.novafacts.backend.auth.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.Email;
 
 public class CreateUserRequest {
 
     @NotBlank
     @Email
-    private String username;
+    private String email;
 
     @NotBlank
     @Size(min = 6)
@@ -17,12 +17,12 @@ public class CreateUserRequest {
     public CreateUserRequest() {
     }
 
-    public String getUsername() {
-        return username;
+    public String getEmail() {
+        return email;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPassword() {

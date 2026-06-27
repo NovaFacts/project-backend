@@ -17,6 +17,8 @@ import java.util.List;
 @Service
 public class UserService {
 
+    private static final int DEFAULT_ROL_ID = 1;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -37,10 +39,10 @@ public class UserService {
 
     public UserResponse createUser(CreateUserRequest request) {
         User user = new User();
-        user.setUsername(request.getUsername());
+        user.setUsername(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setNombre(request.getUsername());
-        user.setRolId(1);
+        user.setNombre(request.getEmail());
+        user.setRolId(DEFAULT_ROL_ID);
         user.setActivo(true);
 
         User savedUser = userRepository.save(user);
@@ -55,7 +57,7 @@ public class UserService {
     }
 
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
+        User user = userRepository.findByUsername(request.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
 
         boolean passwordMatches = passwordEncoder.matches(
