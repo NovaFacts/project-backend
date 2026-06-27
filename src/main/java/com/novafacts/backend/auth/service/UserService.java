@@ -10,6 +10,7 @@ import com.novafacts.backend.auth.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -33,10 +34,12 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
+    @Transactional
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }
 
+    @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         User user = new User();
         user.setUsername(request.getEmail());
@@ -49,6 +52,7 @@ public class UserService {
         return new UserResponse(savedUser.getId(), savedUser.getUsername());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getUsers() {
         return userRepository.findAll()
                 .stream()
@@ -56,6 +60,7 @@ public class UserService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));

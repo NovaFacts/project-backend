@@ -7,6 +7,7 @@ import com.novafacts.backend.guest.entity.Guest;
 import com.novafacts.backend.guest.repository.GuestRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -20,16 +21,19 @@ public class GuestService {
         this.guestRepository = guestRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<GuestResponse> findAll() {
         return guestRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public GuestResponse findById(Long id) {
         return toResponse(getOrThrow(id));
     }
 
+    @Transactional
     public GuestResponse create(CreateGuestRequest request) {
         if (guestRepository.existsByDocumentNumber(request.getDocumentNumber())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -45,6 +49,7 @@ public class GuestService {
         return toResponse(guestRepository.save(guest));
     }
 
+    @Transactional
     public GuestResponse update(Long id, UpdateGuestRequest request) {
         Guest guest = getOrThrow(id);
         if (guestRepository.existsByDocumentNumberAndIdNot(request.getDocumentNumber(), id)) {
@@ -60,6 +65,7 @@ public class GuestService {
         return toResponse(guestRepository.save(guest));
     }
 
+    @Transactional
     public void delete(Long id) {
         guestRepository.delete(getOrThrow(id));
     }
