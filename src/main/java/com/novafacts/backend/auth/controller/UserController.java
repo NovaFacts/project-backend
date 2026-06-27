@@ -3,6 +3,9 @@ package com.novafacts.backend.auth.controller;
 import com.novafacts.backend.auth.dto.CreateUserRequest;
 import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.service.UserService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,19 +21,20 @@ public class UserController {
     }
 
     @PostMapping
-    public UserResponse createUser(
-            @RequestBody CreateUserRequest request
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody CreateUserRequest request
     ) {
-        return userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(request));
     }
 
     @GetMapping
     public List<UserResponse> getUsers() {
         return userService.getUsers();
     }
-    
+
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
-    userService.deleteUser(id);
-}
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
 }

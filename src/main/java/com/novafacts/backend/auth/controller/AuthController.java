@@ -3,6 +3,7 @@ package com.novafacts.backend.auth.controller;
 import com.novafacts.backend.auth.dto.LoginRequest;
 import com.novafacts.backend.auth.dto.LoginResponse;
 import com.novafacts.backend.auth.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,7 +18,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public LoginResponse login(
-            @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request
     ) {
         return userService.login(request);
     }

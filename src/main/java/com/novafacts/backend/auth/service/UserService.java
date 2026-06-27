@@ -7,8 +7,10 @@ import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.jwt.JwtService;
 import com.novafacts.backend.auth.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -62,7 +64,7 @@ public class UserService {
         );
 
         if (!passwordMatches) {
-            throw new RuntimeException("Contraseña incorrecta");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
         String token = jwtService.generateToken(user.getUsername());
