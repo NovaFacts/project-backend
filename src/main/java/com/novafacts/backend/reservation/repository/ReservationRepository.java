@@ -8,6 +8,9 @@ import java.time.LocalDate;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
+    long countByStatus(ReservationStatus status);
+
+
     // Overlap condition: existing.checkIn < newCheckOut AND existing.checkOut > newCheckIn.
     // Parameter order is intentional: checkOut is the bound for CheckInBefore,
     // checkIn is the bound for CheckOutAfter. Only CONFIRMED reservations block availability.
