@@ -40,11 +40,6 @@ public class InvoiceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.create(request));
     }
 
-    @PutMapping("/{id}/pay")
-    public ResponseEntity<InvoiceResponse> pay(@PathVariable Long id) {
-        return ResponseEntity.ok(invoiceService.pay(id));
-    }
-
     @PutMapping("/{id}/cancel")
     public ResponseEntity<InvoiceResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(invoiceService.cancel(id));

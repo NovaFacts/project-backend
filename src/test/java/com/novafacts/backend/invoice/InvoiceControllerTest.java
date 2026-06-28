@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novafacts.backend.guest.entity.Guest;
 import com.novafacts.backend.guest.repository.GuestRepository;
 import com.novafacts.backend.invoice.repository.InvoiceRepository;
+import com.novafacts.backend.payment.repository.PaymentRepository;
 import com.novafacts.backend.property.entity.Property;
 import com.novafacts.backend.property.repository.PropertyRepository;
 import com.novafacts.backend.reservation.entity.Reservation;
@@ -36,12 +37,14 @@ class InvoiceControllerTest {
     @Autowired private PropertyRepository propertyRepository;
     @Autowired private ReservationRepository reservationRepository;
     @Autowired private InvoiceRepository invoiceRepository;
+    @Autowired private PaymentRepository paymentRepository;
     @Autowired private ObjectMapper objectMapper;
 
     private Reservation savedReservation;
 
     @BeforeEach
     void setUp() {
+        paymentRepository.deleteAll();
         invoiceRepository.deleteAll();
         reservationRepository.deleteAll();
         propertyRepository.deleteAll();
@@ -104,7 +107,7 @@ class InvoiceControllerTest {
     }
 
     @Test
-    void pay_invoice_returns_200_with_status_paid() throws Exception {
+    void invoice_becomes_paid_via_payment_creation() throws Exception {
         String createResponse = mockMvc.perform(post("/api/invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invoiceBody()))
@@ -113,7 +116,12 @@ class InvoiceControllerTest {
 
         Long invoiceId = objectMapper.readTree(createResponse).get("id").asLong();
 
-        mockMvc.perform(put("/api/invoices/" + invoiceId + "/pay"))
+        mockMvc.perform(post("/api/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"invoiceId\": %d, \"paymentMethod\": \"TRANSFER\"}".formatted(invoiceId)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/invoices/" + invoiceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PAID"))
                 .andExpect(jsonPath("$.id").value(invoiceId));
@@ -144,8 +152,10 @@ class InvoiceControllerTest {
 
         Long invoiceId = objectMapper.readTree(createResponse).get("id").asLong();
 
-        mockMvc.perform(put("/api/invoices/" + invoiceId + "/pay"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"invoiceId\": %d, \"paymentMethod\": \"CASH\"}".formatted(invoiceId)))
+                .andExpect(status().isCreated());
 
         mockMvc.perform(delete("/api/invoices/" + invoiceId))
                 .andExpect(status().isConflict());
