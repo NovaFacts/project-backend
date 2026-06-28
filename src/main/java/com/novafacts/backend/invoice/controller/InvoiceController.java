@@ -21,13 +21,13 @@ public class InvoiceController {
     }
 
     @GetMapping
-    public List<InvoiceResponse> getAll() {
-        return invoiceService.findAll();
+    public ResponseEntity<List<InvoiceResponse>> getAll() {
+        return ResponseEntity.ok(invoiceService.findAll());
     }
 
     @GetMapping("/{id}")
-    public InvoiceResponse getById(@PathVariable Long id) {
-        return invoiceService.findById(id);
+    public ResponseEntity<InvoiceResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(invoiceService.findById(id));
     }
 
     @GetMapping("/by-reservation/{reservationId}")
