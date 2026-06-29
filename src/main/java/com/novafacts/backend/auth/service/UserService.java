@@ -7,16 +7,18 @@ import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.jwt.JwtService;
 import com.novafacts.backend.auth.repository.UserRepository;
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.rol.dto.RolResponse;
 import com.novafacts.backend.rol.entity.Rol;
 import com.novafacts.backend.rol.repository.RolRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @Service
 public class UserService {
@@ -32,25 +34,31 @@ public class UserService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService
     ) {
-        this.userRepository = userRepository;
-        this.rolRepository = rolRepository;
+        this.userRepository  = userRepository;
+        this.rolRepository   = rolRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
+        this.jwtService      = jwtService;
     }
 
     @Transactional
     public void deleteUser(Long id) {
-        userRepository.deleteById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Usuario no encontrado"));
+        user.setActivo(false);
+        userRepository.save(user);
     }
 
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El correo electrónico ya está registrado");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El correo electrónico ya está registrado");
         }
 
         Rol rol = rolRepository.findById(request.getRolId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rol no encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Rol no encontrado"));
 
         User user = new User();
         user.setUsername(request.getEmail());
@@ -59,37 +67,47 @@ public class UserService {
         user.setRol(rol);
         user.setActivo(true);
 
-        User savedUser = userRepository.save(user);
-        return toResponse(savedUser);
+        return toResponse(userRepository.save(user));
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> getUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public PageResponse<UserResponse> getUsers(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("nombre").ascending());
+        return new PageResponse<>(userRepository.findAll(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getEmail())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Credenciales inválidas"));
+
+        if (!Boolean.TRUE.equals(user.getActivo())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Cuenta de usuario desactivada");
+        }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Credenciales inválidas");
         }
 
         String token = jwtService.generateToken(user.getUsername(), user.getRol().getNombre());
         return new LoginResponse(token, user.getRol().getNombre(), user.getNombre());
     }
 
-    private UserResponse toResponse(User user) {
+    public UserResponse toResponse(User user) {
         RolResponse rolResponse = new RolResponse(
                 user.getRol().getId(),
                 user.getRol().getNombre(),
                 user.getRol().getDescripcion()
         );
-        return new UserResponse(user.getId(), user.getUsername(), user.getNombre(), rolResponse);
+        return new UserResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getNombre(),
+                Boolean.TRUE.equals(user.getActivo()),
+                rolResponse
+        );
     }
 }

@@ -10,6 +10,10 @@ import com.novafacts.backend.invoice.entity.InvoiceStatus;
 import com.novafacts.backend.reservation.entity.Reservation;
 import com.novafacts.backend.reservation.entity.ReservationStatus;
 import com.novafacts.backend.reservation.repository.ReservationRepository;
+import com.novafacts.backend.common.PageResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,7 +22,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -37,8 +40,9 @@ public class FacturaService {
     }
 
     @Transactional(readOnly = true)
-    public List<FacturaResponse> findAll() {
-        return facturaRepository.findAll().stream().map(this::toResponse).toList();
+    public PageResponse<FacturaResponse> findAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("emitidaEn").descending());
+        return new PageResponse<>(facturaRepository.findAll(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)

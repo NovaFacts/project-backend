@@ -12,8 +12,8 @@ public class DashboardResponse {
     private final long pendingInvoices;
     private final long paidInvoices;
     private final long cancelledInvoices;
-    private final long totalPayments;
-    private final BigDecimal totalRevenue;
+    private final long totalAnticipos;
+    private final BigDecimal montoTotalAnticipos;
 
     public DashboardResponse(long totalGuests,
                              long totalProperties,
@@ -23,8 +23,8 @@ public class DashboardResponse {
                              long pendingInvoices,
                              long paidInvoices,
                              long cancelledInvoices,
-                             long totalPayments,
-                             BigDecimal totalRevenue) {
+                             long totalAnticipos,
+                             BigDecimal montoTotalAnticipos) {
         this.totalGuests = totalGuests;
         this.totalProperties = totalProperties;
         this.confirmedReservations = confirmedReservations;
@@ -33,8 +33,8 @@ public class DashboardResponse {
         this.pendingInvoices = pendingInvoices;
         this.paidInvoices = paidInvoices;
         this.cancelledInvoices = cancelledInvoices;
-        this.totalPayments = totalPayments;
-        this.totalRevenue = totalRevenue;
+        this.totalAnticipos = totalAnticipos;
+        this.montoTotalAnticipos = montoTotalAnticipos;
     }
 
     public long getTotalGuests()              { return totalGuests; }
@@ -45,6 +45,6 @@ public class DashboardResponse {
     public long getPendingInvoices()          { return pendingInvoices; }
     public long getPaidInvoices()             { return paidInvoices; }
     public long getCancelledInvoices()        { return cancelledInvoices; }
-    public long getTotalPayments()            { return totalPayments; }
-    public BigDecimal getTotalRevenue()       { return totalRevenue; }
+    public long getTotalAnticipos()           { return totalAnticipos; }
+    public BigDecimal getMontoTotalAnticipos() { return montoTotalAnticipos; }
 }

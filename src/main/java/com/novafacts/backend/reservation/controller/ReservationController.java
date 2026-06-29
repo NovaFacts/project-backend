@@ -1,5 +1,6 @@
 package com.novafacts.backend.reservation.controller;
 
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.reservation.dto.CreateReservationRequest;
 import com.novafacts.backend.reservation.dto.ReservationResponse;
 import com.novafacts.backend.reservation.dto.UpdateReservationRequest;
@@ -8,8 +9,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/reservations")
@@ -22,8 +21,11 @@ public class ReservationController {
     }
 
     @GetMapping
-    public List<ReservationResponse> getAll() {
-        return reservationService.findAll();
+    public ResponseEntity<PageResponse<ReservationResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(reservationService.findAll(page, size));
     }
 
     @GetMapping("/{id}")

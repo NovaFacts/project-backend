@@ -3,12 +3,11 @@ package com.novafacts.backend.auth.controller;
 import com.novafacts.backend.auth.dto.CreateUserRequest;
 import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.service.UserService;
+import com.novafacts.backend.common.PageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -28,8 +27,11 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserResponse> getUsers() {
-        return userService.getUsers();
+    public ResponseEntity<PageResponse<UserResponse>> getUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(userService.getUsers(page, size));
     }
 
     @DeleteMapping("/{id}")

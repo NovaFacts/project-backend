@@ -1,19 +1,38 @@
 package com.novafacts.backend.reservation.dto;
 
 import com.novafacts.backend.reservation.entity.ReservationStatus;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.*;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class UpdateReservationRequest {
 
-    @NotNull(message = "El identificador del huésped es obligatorio")
-    @Positive(message = "El identificador del huésped debe ser mayor a cero")
-    private Long guestId;
+    @NotNull(message = "El canal es obligatorio")
+    private Integer canalId;
 
-    @NotNull(message = "El identificador de la propiedad es obligatorio")
+    @NotNull(message = "La temporada es obligatoria")
+    private Integer temporadaId;
+
+    @NotNull(message = "La política de cancelación es obligatoria")
+    private Integer politicaCancelacionId;
+
+    @NotNull(message = "La propiedad es obligatoria")
     @Positive(message = "El identificador de la propiedad debe ser mayor a cero")
     private Long propertyId;
+
+    @NotBlank(message = "El nombre del cliente es obligatorio")
+    @Size(max = 150, message = "El nombre del cliente no puede superar 150 caracteres")
+    private String clienteNombre;
+
+    @Size(max = 150, message = "El email del cliente no puede superar 150 caracteres")
+    private String clienteEmail;
+
+    @Size(max = 50, message = "El teléfono del cliente no puede superar 50 caracteres")
+    private String clienteTelefono;
+
+    @NotNull(message = "El monto total es obligatorio")
+    @DecimalMin(value = "0.00", inclusive = true, message = "El monto total no puede ser negativo")
+    private BigDecimal montoTotal;
 
     @NotNull(message = "La fecha de inicio es obligatoria")
     private LocalDate checkIn;
@@ -30,11 +49,31 @@ public class UpdateReservationRequest {
 
     public UpdateReservationRequest() {}
 
-    public Long getGuestId() { return guestId; }
-    public void setGuestId(Long guestId) { this.guestId = guestId; }
+    public Integer getCanalId() { return canalId; }
+    public void setCanalId(Integer canalId) { this.canalId = canalId; }
+
+    public Integer getTemporadaId() { return temporadaId; }
+    public void setTemporadaId(Integer temporadaId) { this.temporadaId = temporadaId; }
+
+    public Integer getPoliticaCancelacionId() { return politicaCancelacionId; }
+    public void setPoliticaCancelacionId(Integer politicaCancelacionId) {
+        this.politicaCancelacionId = politicaCancelacionId;
+    }
 
     public Long getPropertyId() { return propertyId; }
     public void setPropertyId(Long propertyId) { this.propertyId = propertyId; }
+
+    public String getClienteNombre() { return clienteNombre; }
+    public void setClienteNombre(String clienteNombre) { this.clienteNombre = clienteNombre; }
+
+    public String getClienteEmail() { return clienteEmail; }
+    public void setClienteEmail(String clienteEmail) { this.clienteEmail = clienteEmail; }
+
+    public String getClienteTelefono() { return clienteTelefono; }
+    public void setClienteTelefono(String clienteTelefono) { this.clienteTelefono = clienteTelefono; }
+
+    public BigDecimal getMontoTotal() { return montoTotal; }
+    public void setMontoTotal(BigDecimal montoTotal) { this.montoTotal = montoTotal; }
 
     public LocalDate getCheckIn() { return checkIn; }
     public void setCheckIn(LocalDate checkIn) { this.checkIn = checkIn; }

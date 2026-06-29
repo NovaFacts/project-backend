@@ -1,6 +1,11 @@
 package com.novafacts.backend.reservation.entity;
 
+import com.novafacts.backend.auth.entity.User;
+import com.novafacts.backend.canal.entity.Canal;
+import com.novafacts.backend.politicacancelacion.entity.PoliticaCancelacion;
+import com.novafacts.backend.temporada.entity.Temporada;
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -17,11 +22,36 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "huesped_id", nullable = false)
-    private Long guestId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "canal_id", nullable = false)
+    private Canal canal;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "temporada_id", nullable = false)
+    private Temporada temporada;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "politica_cancelacion_id", nullable = false)
+    private PoliticaCancelacion politicaCancelacion;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "usuario_creador_id", nullable = false)
+    private User usuarioCreador;
 
     @Column(name = "propiedad_id", nullable = false)
     private Long propertyId;
+
+    @Column(name = "cliente_nombre", nullable = false, length = 150)
+    private String clienteNombre;
+
+    @Column(name = "cliente_email", length = 150)
+    private String clienteEmail;
+
+    @Column(name = "cliente_telefono", length = 50)
+    private String clienteTelefono;
+
+    @Column(name = "monto_total", nullable = false, precision = 15, scale = 2)
+    private BigDecimal montoTotal;
 
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDate checkIn;
@@ -48,11 +78,34 @@ public class Reservation {
 
     public Long getId() { return id; }
 
-    public Long getGuestId() { return guestId; }
-    public void setGuestId(Long guestId) { this.guestId = guestId; }
+    public Canal getCanal() { return canal; }
+    public void setCanal(Canal canal) { this.canal = canal; }
+
+    public Temporada getTemporada() { return temporada; }
+    public void setTemporada(Temporada temporada) { this.temporada = temporada; }
+
+    public PoliticaCancelacion getPoliticaCancelacion() { return politicaCancelacion; }
+    public void setPoliticaCancelacion(PoliticaCancelacion politicaCancelacion) {
+        this.politicaCancelacion = politicaCancelacion;
+    }
+
+    public User getUsuarioCreador() { return usuarioCreador; }
+    public void setUsuarioCreador(User usuarioCreador) { this.usuarioCreador = usuarioCreador; }
 
     public Long getPropertyId() { return propertyId; }
     public void setPropertyId(Long propertyId) { this.propertyId = propertyId; }
+
+    public String getClienteNombre() { return clienteNombre; }
+    public void setClienteNombre(String clienteNombre) { this.clienteNombre = clienteNombre; }
+
+    public String getClienteEmail() { return clienteEmail; }
+    public void setClienteEmail(String clienteEmail) { this.clienteEmail = clienteEmail; }
+
+    public String getClienteTelefono() { return clienteTelefono; }
+    public void setClienteTelefono(String clienteTelefono) { this.clienteTelefono = clienteTelefono; }
+
+    public BigDecimal getMontoTotal() { return montoTotal; }
+    public void setMontoTotal(BigDecimal montoTotal) { this.montoTotal = montoTotal; }
 
     public LocalDate getCheckIn() { return checkIn; }
     public void setCheckIn(LocalDate checkIn) { this.checkIn = checkIn; }

@@ -24,7 +24,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "Usuario no encontrado: " + username));
 
         String authority = "ROLE_" + user.getRol().getNombre().toUpperCase().replace(" ", "_");
 
@@ -32,6 +33,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .withUsername(user.getUsername())
                 .password(user.getPassword())
                 .authorities(List.of(new SimpleGrantedAuthority(authority)))
+                .disabled(!Boolean.TRUE.equals(user.getActivo()))
                 .build();
     }
 }

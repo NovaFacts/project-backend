@@ -1,5 +1,6 @@
 package com.novafacts.backend.factura.controller;
 
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.factura.dto.FacturaRequest;
 import com.novafacts.backend.factura.dto.FacturaResponse;
 import com.novafacts.backend.factura.service.FacturaService;
@@ -7,8 +8,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/facturas")
@@ -21,8 +20,11 @@ public class FacturaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<FacturaResponse>> getAll() {
-        return ResponseEntity.ok(facturaService.findAll());
+    public ResponseEntity<PageResponse<FacturaResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(facturaService.findAll(page, size));
     }
 
     @GetMapping("/{id}")
