@@ -7,6 +7,9 @@ import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.jwt.JwtService;
 import com.novafacts.backend.auth.repository.UserRepository;
+import com.novafacts.backend.rol.dto.RolResponse;
+import com.novafacts.backend.rol.entity.Rol;
+import com.novafacts.backend.rol.repository.RolRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,18 +21,19 @@ import java.util.List;
 @Service
 public class UserService {
 
-    private static final int DEFAULT_ROL_ID = 1;
-
     private final UserRepository userRepository;
+    private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
     public UserService(
             UserRepository userRepository,
+            RolRepository rolRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService
     ) {
         this.userRepository = userRepository;
+        this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -41,22 +45,29 @@ public class UserService {
 
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
+        if (userRepository.existsByUsername(request.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El correo electrónico ya está registrado");
+        }
+
+        Rol rol = rolRepository.findById(request.getRolId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rol no encontrado"));
+
         User user = new User();
         user.setUsername(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setNombre(request.getEmail());
-        user.setRolId(DEFAULT_ROL_ID);
+        user.setNombre(request.getNombre());
+        user.setRol(rol);
         user.setActivo(true);
 
         User savedUser = userRepository.save(user);
-        return new UserResponse(savedUser.getId(), savedUser.getUsername());
+        return toResponse(savedUser);
     }
 
     @Transactional(readOnly = true)
     public List<UserResponse> getUsers() {
         return userRepository.findAll()
                 .stream()
-                .map(user -> new UserResponse(user.getId(), user.getUsername()))
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -65,16 +76,20 @@ public class UserService {
         User user = userRepository.findByUsername(request.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
 
-        boolean passwordMatches = passwordEncoder.matches(
-                request.getPassword(),
-                user.getPassword()
-        );
-
-        if (!passwordMatches) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
-        String token = jwtService.generateToken(user.getUsername());
-        return new LoginResponse(token, "Login exitoso");
+        String token = jwtService.generateToken(user.getUsername(), user.getRol().getNombre());
+        return new LoginResponse(token, user.getRol().getNombre(), user.getNombre());
+    }
+
+    private UserResponse toResponse(User user) {
+        RolResponse rolResponse = new RolResponse(
+                user.getRol().getId(),
+                user.getRol().getNombre(),
+                user.getRol().getDescripcion()
+        );
+        return new UserResponse(user.getId(), user.getUsername(), user.getNombre(), rolResponse);
     }
 }

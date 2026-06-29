@@ -3,7 +3,9 @@ package com.novafacts.backend.config;
 import com.novafacts.backend.auth.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -18,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -34,6 +37,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Usuarios: full endpoint restricted to ADMINISTRADOR (Sprint 1)
+                        .requestMatchers("/api/usuarios/**").hasRole("ADMINISTRADOR")
+                        // Reference-data write operations restricted to ADMINISTRADOR
+                        .requestMatchers(HttpMethod.POST,   "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT,    "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**").hasRole("ADMINISTRADOR")
+                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

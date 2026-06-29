@@ -62,9 +62,6 @@ class PaymentControllerTest {
         Property property = new Property();
         property.setName("Finca Pago Test");
         property.setAddress("Vereda El Nogal");
-        property.setCity("Villa de Leyva");
-        property.setCapacity(8);
-        property.setPricePerNight(new BigDecimal("400000.00"));
         Property savedProperty = propertyRepository.save(property);
 
         Reservation reservation = new Reservation();

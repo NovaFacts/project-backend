@@ -1,7 +1,6 @@
 package com.novafacts.backend.reservation.service;
 
 import com.novafacts.backend.guest.repository.GuestRepository;
-import com.novafacts.backend.property.entity.Property;
 import com.novafacts.backend.property.repository.PropertyRepository;
 import com.novafacts.backend.reservation.dto.CreateReservationRequest;
 import com.novafacts.backend.reservation.dto.ReservationResponse;
@@ -48,9 +47,8 @@ public class ReservationService {
     @Transactional
     public ReservationResponse create(CreateReservationRequest request) {
         validateGuestExists(request.getGuestId());
-        Property property = getPropertyOrThrow(request.getPropertyId());
+        validatePropertyExists(request.getPropertyId());
         validateDates(request.getCheckIn(), request.getCheckOut());
-        validateGuestCount(request.getGuestCount(), property.getCapacity());
         // checkOut is passed as the CheckInBefore bound; checkIn as the CheckOutAfter bound — see repository.
         if (reservationRepository.existsByPropertyIdAndCheckInBeforeAndCheckOutAfterAndStatus(
                 request.getPropertyId(), request.getCheckOut(), request.getCheckIn(),
@@ -72,9 +70,8 @@ public class ReservationService {
     public ReservationResponse update(Long id, UpdateReservationRequest request) {
         Reservation reservation = getOrThrow(id);
         validateGuestExists(request.getGuestId());
-        Property property = getPropertyOrThrow(request.getPropertyId());
+        validatePropertyExists(request.getPropertyId());
         validateDates(request.getCheckIn(), request.getCheckOut());
-        validateGuestCount(request.getGuestCount(), property.getCapacity());
         // checkOut is passed as the CheckInBefore bound; checkIn as the CheckOutAfter bound — see repository.
         if (reservationRepository.existsByPropertyIdAndCheckInBeforeAndCheckOutAfterAndStatusAndIdNot(
                 request.getPropertyId(), request.getCheckOut(), request.getCheckIn(),
@@ -102,10 +99,10 @@ public class ReservationService {
         }
     }
 
-    private Property getPropertyOrThrow(Long propertyId) {
-        return propertyRepository.findById(propertyId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Propiedad no encontrada"));
+    private void validatePropertyExists(Long propertyId) {
+        if (!propertyRepository.existsById(propertyId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Propiedad no encontrada");
+        }
     }
 
     private void validateDates(LocalDate checkIn, LocalDate checkOut) {
@@ -117,13 +114,6 @@ public class ReservationService {
         if (nights > 30) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "La reserva no puede superar 30 noches");
-        }
-    }
-
-    private void validateGuestCount(Integer guestCount, Integer propertyCapacity) {
-        if (guestCount > propertyCapacity) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "La cantidad de huéspedes supera la capacidad de la propiedad");
         }
     }
 

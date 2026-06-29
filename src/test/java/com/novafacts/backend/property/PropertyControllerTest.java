@@ -12,15 +12,13 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser
+@WithMockUser(roles = {"ADMINISTRADOR"})
 class PropertyControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -35,42 +33,35 @@ class PropertyControllerTest {
         Property property = new Property();
         property.setName("Propiedad Test");
         property.setAddress("Calle 1 # 2-3");
-        property.setCity("Bogotá");
-        property.setCapacity(4);
-        property.setPricePerNight(new BigDecimal("150000.00"));
+        property.setDescripcion("Descripción de prueba");
         savedProperty = propertyRepository.save(property);
     }
 
     @Test
     void create_property_returns_201() throws Exception {
-        mockMvc.perform(post("/api/properties")
+        mockMvc.perform(post("/api/propiedades")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                     "name": "Apartamento Nuevo",
                                     "address": "Carrera 7 # 100-50",
-                                    "city": "Medellín",
-                                    "capacity": 3,
-                                    "pricePerNight": 200000.00
+                                    "descripcion": "Apartamento moderno en el norte"
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Apartamento Nuevo"))
-                .andExpect(jsonPath("$.capacity").value(3))
+                .andExpect(jsonPath("$.activa").value(true))
                 .andExpect(jsonPath("$.id").isNumber());
     }
 
     @Test
     void duplicate_property_returns_409() throws Exception {
-        mockMvc.perform(post("/api/properties")
+        mockMvc.perform(post("/api/propiedades")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                     "name": "Propiedad Test",
-                                    "address": "Otra Dirección",
-                                    "city": "Cali",
-                                    "capacity": 2,
-                                    "pricePerNight": 100000.00
+                                    "address": "Otra Dirección"
                                 }
                                 """))
                 .andExpect(status().isConflict());
@@ -78,38 +69,38 @@ class PropertyControllerTest {
 
     @Test
     void get_by_id_returns_200() throws Exception {
-        mockMvc.perform(get("/api/properties/" + savedProperty.getId()))
+        mockMvc.perform(get("/api/propiedades/" + savedProperty.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(savedProperty.getId()))
                 .andExpect(jsonPath("$.name").value("Propiedad Test"))
-                .andExpect(jsonPath("$.city").value("Bogotá"));
+                .andExpect(jsonPath("$.activa").value(true));
     }
 
     @Test
     void update_returns_200() throws Exception {
-        mockMvc.perform(put("/api/properties/" + savedProperty.getId())
+        mockMvc.perform(put("/api/propiedades/" + savedProperty.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                     "name": "Propiedad Test Actualizada",
                                     "address": "Nueva Dirección 456",
-                                    "city": "Cartagena",
-                                    "capacity": 6,
-                                    "pricePerNight": 300000.00
+                                    "descripcion": "Nueva descripción",
+                                    "activa": true
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Propiedad Test Actualizada"))
-                .andExpect(jsonPath("$.capacity").value(6))
-                .andExpect(jsonPath("$.city").value("Cartagena"));
+                .andExpect(jsonPath("$.address").value("Nueva Dirección 456"))
+                .andExpect(jsonPath("$.activa").value(true));
     }
 
     @Test
-    void delete_returns_204_and_subsequent_get_returns_404() throws Exception {
-        mockMvc.perform(delete("/api/properties/" + savedProperty.getId()))
+    void soft_delete_returns_204_and_property_becomes_inactive() throws Exception {
+        mockMvc.perform(delete("/api/propiedades/" + savedProperty.getId()))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/properties/" + savedProperty.getId()))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/propiedades/" + savedProperty.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activa").value(false));
     }
 }

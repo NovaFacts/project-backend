@@ -85,9 +85,6 @@ class DashboardControllerTest {
             Property p = new Property();
             p.setName("Propiedad " + i);
             p.setAddress("Calle " + i);
-            p.setCity("Bogotá");
-            p.setCapacity(4);
-            p.setPricePerNight(new BigDecimal("200000.00"));
             propertyRepository.save(p);
         }
 

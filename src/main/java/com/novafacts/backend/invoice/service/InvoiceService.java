@@ -5,8 +5,6 @@ import com.novafacts.backend.invoice.dto.InvoiceResponse;
 import com.novafacts.backend.invoice.entity.Invoice;
 import com.novafacts.backend.invoice.entity.InvoiceStatus;
 import com.novafacts.backend.invoice.repository.InvoiceRepository;
-import com.novafacts.backend.property.entity.Property;
-import com.novafacts.backend.property.repository.PropertyRepository;
 import com.novafacts.backend.reservation.entity.Reservation;
 import com.novafacts.backend.reservation.entity.ReservationStatus;
 import com.novafacts.backend.reservation.repository.ReservationRepository;
@@ -17,7 +15,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -27,14 +24,11 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final ReservationRepository reservationRepository;
-    private final PropertyRepository propertyRepository;
 
     public InvoiceService(InvoiceRepository invoiceRepository,
-                          ReservationRepository reservationRepository,
-                          PropertyRepository propertyRepository) {
+                          ReservationRepository reservationRepository) {
         this.invoiceRepository = invoiceRepository;
         this.reservationRepository = reservationRepository;
-        this.propertyRepository = propertyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -73,17 +67,9 @@ public class InvoiceService {
                     "Ya existe una factura para esta reserva");
         }
 
-        Property property = propertyRepository.findById(reservation.getPropertyId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Propiedad no encontrada"));
-
-        long nights = ChronoUnit.DAYS.between(reservation.getCheckIn(), reservation.getCheckOut());
-        BigDecimal subtotal = property.getPricePerNight()
-                .multiply(BigDecimal.valueOf(nights))
-                .setScale(2, RoundingMode.HALF_UP);
-        BigDecimal tax = subtotal.multiply(IVA_RATE)
-                .setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(tax).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal subtotal = request.getSubtotal().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal tax      = subtotal.multiply(IVA_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total    = subtotal.add(tax).setScale(2, RoundingMode.HALF_UP);
 
         Invoice invoice = new Invoice();
         invoice.setReservationId(request.getReservationId());

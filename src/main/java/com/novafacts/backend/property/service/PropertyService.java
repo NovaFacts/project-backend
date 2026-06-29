@@ -35,9 +35,7 @@ public class PropertyService {
 
     @Transactional
     public PropertyResponse create(CreatePropertyRequest request) {
-        String name    = request.getName().strip();
-        String address = request.getAddress().strip();
-        String city    = request.getCity().strip();
+        String name = request.getName().strip();
 
         if (propertyRepository.existsByNameIgnoreCase(name)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -45,36 +43,33 @@ public class PropertyService {
         }
         Property property = new Property();
         property.setName(name);
-        property.setAddress(address);
-        property.setCity(city);
-        property.setCapacity(request.getCapacity());
-        property.setPricePerNight(request.getPricePerNight());
+        property.setAddress(request.getAddress());
+        property.setDescripcion(request.getDescripcion());
+        property.setActiva(true);
         return toResponse(propertyRepository.save(property));
     }
 
     @Transactional
     public PropertyResponse update(Long id, UpdatePropertyRequest request) {
         Property property = getOrThrow(id);
-
-        String name    = request.getName().strip();
-        String address = request.getAddress().strip();
-        String city    = request.getCity().strip();
+        String name = request.getName().strip();
 
         if (propertyRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Ya existe una propiedad con ese nombre");
         }
         property.setName(name);
-        property.setAddress(address);
-        property.setCity(city);
-        property.setCapacity(request.getCapacity());
-        property.setPricePerNight(request.getPricePerNight());
+        property.setAddress(request.getAddress());
+        property.setDescripcion(request.getDescripcion());
+        property.setActiva(request.getActiva());
         return toResponse(propertyRepository.save(property));
     }
 
     @Transactional
     public void delete(Long id) {
-        propertyRepository.delete(getOrThrow(id));
+        Property property = getOrThrow(id);
+        property.setActiva(false);
+        propertyRepository.save(property);
     }
 
     private Property getOrThrow(Long id) {
@@ -88,10 +83,8 @@ public class PropertyService {
                 property.getId(),
                 property.getName(),
                 property.getAddress(),
-                property.getCity(),
-                property.getCapacity(),
-                property.getPricePerNight(),
-                property.getCreatedAt()
+                property.getDescripcion(),
+                property.getActiva()
         );
     }
 }

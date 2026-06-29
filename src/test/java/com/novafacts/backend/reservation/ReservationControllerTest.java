@@ -16,8 +16,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -52,9 +50,6 @@ class ReservationControllerTest {
         Property property = new Property();
         property.setName("Villa Reserva Test");
         property.setAddress("Avenida 10 # 50-60");
-        property.setCity("Cartagena");
-        property.setCapacity(6);
-        property.setPricePerNight(new BigDecimal("350000.00"));
         savedProperty = propertyRepository.save(property);
     }
 

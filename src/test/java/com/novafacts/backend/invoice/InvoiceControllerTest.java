@@ -20,7 +20,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -60,9 +59,6 @@ class InvoiceControllerTest {
         Property property = new Property();
         property.setName("Casa Factura Test");
         property.setAddress("Calle Factura 1");
-        property.setCity("Bogotá");
-        property.setCapacity(4);
-        property.setPricePerNight(new BigDecimal("200000.00"));
         Property savedProperty = propertyRepository.save(property);
 
         Reservation reservation = new Reservation();
@@ -76,12 +72,13 @@ class InvoiceControllerTest {
     }
 
     private String invoiceBody() {
-        return "{\"reservationId\": %d}".formatted(savedReservation.getId());
+        // subtotal provided by caller: 5 nights × 200 000 = 1 000 000 COP
+        return "{\"reservationId\": %d, \"subtotal\": 1000000}".formatted(savedReservation.getId());
     }
 
     @Test
     void create_invoice_returns_201_with_calculated_amounts() throws Exception {
-        // 5 nights × 200000 = 1000000 subtotal; × 0.19 = 190000 tax; total = 1190000
+        // 1000000 subtotal × 0.19 = 190000 tax; total = 1190000
         mockMvc.perform(post("/api/invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invoiceBody()))
