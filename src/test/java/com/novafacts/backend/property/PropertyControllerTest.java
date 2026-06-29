@@ -1,7 +1,14 @@
 package com.novafacts.backend.property;
 
+import com.novafacts.backend.anticipo.repository.AnticipoRepository;
+import com.novafacts.backend.devolucion.repository.DevolucionRepository;
+import com.novafacts.backend.factura.repository.FacturaRepository;
+import com.novafacts.backend.notacredito.repository.NotaCreditoRepository;
+import com.novafacts.backend.penalidad.repository.PenalidadRepository;
+import com.novafacts.backend.politicacancelacion.repository.PoliticaCancelacionRepository;
 import com.novafacts.backend.property.entity.Property;
 import com.novafacts.backend.property.repository.PropertyRepository;
+import com.novafacts.backend.reservation.repository.ReservationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,12 +29,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PropertyControllerTest {
 
     @Autowired private MockMvc mockMvc;
+    @Autowired private DevolucionRepository devolucionRepository;
+    @Autowired private NotaCreditoRepository notaCreditoRepository;
+    @Autowired private AnticipoRepository anticipoRepository;
+    @Autowired private PenalidadRepository penalidadRepository;
+    @Autowired private FacturaRepository facturaRepository;
     @Autowired private PropertyRepository propertyRepository;
+    @Autowired private PoliticaCancelacionRepository politicaRepository;
+    @Autowired private ReservationRepository reservationRepository;
 
     private Property savedProperty;
 
     @BeforeEach
     void setUp() {
+        devolucionRepository.deleteAll();
+        notaCreditoRepository.deleteAll();
+        anticipoRepository.deleteAll();
+        penalidadRepository.deleteAll();
+        facturaRepository.deleteAll();
+        reservationRepository.deleteAll();
+        politicaRepository.deleteAll();
         propertyRepository.deleteAll();
 
         Property property = new Property();

@@ -39,10 +39,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         // Usuarios: full endpoint restricted to ADMINISTRADOR (Sprint 1)
                         .requestMatchers("/api/usuarios/**").hasRole("ADMINISTRADOR")
-                        // Reference-data write operations restricted to ADMINISTRADOR
-                        .requestMatchers(HttpMethod.POST,   "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT,    "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**").hasRole("ADMINISTRADOR")
+                        // Reference-data and policy write operations restricted to ADMINISTRADOR
+                        .requestMatchers(HttpMethod.POST,   "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**", "/api/politicas/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT,    "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**", "/api/politicas/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/propiedades/**", "/api/canales/**", "/api/temporadas/**", "/api/politicas/**").hasRole("ADMINISTRADOR")
+                        // Billing operations (factura, nota_credito, devolucion) — ADMINISTRADOR and CONTADOR only
+                        .requestMatchers(HttpMethod.POST,   "/api/facturas/**", "/api/notas-credito/**", "/api/devoluciones/**").hasAnyRole("ADMINISTRADOR", "CONTADOR")
+                        .requestMatchers(HttpMethod.PUT,    "/api/facturas/**", "/api/notas-credito/**", "/api/devoluciones/**").hasAnyRole("ADMINISTRADOR", "CONTADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/facturas/**", "/api/notas-credito/**", "/api/devoluciones/**").hasAnyRole("ADMINISTRADOR", "CONTADOR")
+                        // Financial operations (anticipo, penalidad) restricted to accounting roles
+                        .requestMatchers(HttpMethod.POST,   "/api/anticipos/**", "/api/penalidades/**").hasAnyRole("ADMINISTRADOR", "CONTADOR", "AUXILIAR_CONTABLE")
+                        .requestMatchers(HttpMethod.PUT,    "/api/anticipos/**", "/api/penalidades/**").hasAnyRole("ADMINISTRADOR", "CONTADOR", "AUXILIAR_CONTABLE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/anticipos/**", "/api/penalidades/**").hasAnyRole("ADMINISTRADOR", "CONTADOR", "AUXILIAR_CONTABLE")
                         // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
