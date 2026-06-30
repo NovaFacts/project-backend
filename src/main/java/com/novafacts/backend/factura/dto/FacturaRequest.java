@@ -9,6 +9,11 @@ public class FacturaRequest {
     @Positive(message = "El ID de la reserva debe ser mayor a cero")
     private Long reservaId;
 
+    // Optional: when descuentoAnticipo > 0, provide the anticipoId so the service
+    // can atomically mark that anticipo as "aplicado" and prevent a double refund.
+    @Positive(message = "El ID del anticipo debe ser mayor a cero")
+    private Long anticipoId;
+
     @NotNull(message = "El subtotal es obligatorio")
     @DecimalMin(value = "0.01", message = "El subtotal debe ser mayor a cero")
     @Digits(integer = 10, fraction = 2, message = "El subtotal debe tener máximo 10 dígitos enteros y 2 decimales")
@@ -48,4 +53,7 @@ public class FacturaRequest {
 
     public String getUrlDocumento()             { return urlDocumento; }
     public void setUrlDocumento(String u)       { this.urlDocumento = u; }
+
+    public Long getAnticipoId()                 { return anticipoId; }
+    public void setAnticipoId(Long anticipoId)  { this.anticipoId = anticipoId; }
 }

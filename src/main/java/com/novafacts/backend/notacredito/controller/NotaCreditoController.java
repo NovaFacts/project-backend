@@ -1,5 +1,6 @@
 package com.novafacts.backend.notacredito.controller;
 
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.notacredito.dto.NotaCreditoRequest;
 import com.novafacts.backend.notacredito.dto.NotaCreditoResponse;
 import com.novafacts.backend.notacredito.service.NotaCreditoService;
@@ -21,8 +22,11 @@ public class NotaCreditoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<NotaCreditoResponse>> getAll() {
-        return ResponseEntity.ok(notaCreditoService.findAll());
+    public ResponseEntity<PageResponse<NotaCreditoResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(notaCreditoService.findAll(page, Math.min(size, 100)));
     }
 
     @GetMapping("/{id}")

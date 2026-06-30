@@ -25,12 +25,12 @@ public class ReservationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(reservationService.findAll(page, size));
+        return ResponseEntity.ok(reservationService.findAll(page, Math.min(size, 100)));
     }
 
     @GetMapping("/{id}")
-    public ReservationResponse getById(@PathVariable Long id) {
-        return reservationService.findById(id);
+    public ResponseEntity<ReservationResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.findById(id));
     }
 
     @PostMapping

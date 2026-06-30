@@ -1,5 +1,6 @@
 package com.novafacts.backend.devolucion.controller;
 
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.devolucion.dto.DevolucionRequest;
 import com.novafacts.backend.devolucion.dto.DevolucionResponse;
 import com.novafacts.backend.devolucion.service.DevolucionService;
@@ -21,8 +22,11 @@ public class DevolucionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DevolucionResponse>> getAll() {
-        return ResponseEntity.ok(devolucionService.findAll());
+    public ResponseEntity<PageResponse<DevolucionResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(devolucionService.findAll(page, Math.min(size, 100)));
     }
 
     @GetMapping("/{id}")

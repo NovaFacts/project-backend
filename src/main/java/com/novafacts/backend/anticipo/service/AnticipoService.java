@@ -3,11 +3,16 @@ package com.novafacts.backend.anticipo.service;
 import com.novafacts.backend.anticipo.dto.AnticipoRequest;
 import com.novafacts.backend.anticipo.dto.AnticipoResponse;
 import com.novafacts.backend.anticipo.entity.Anticipo;
+import com.novafacts.backend.anticipo.entity.AnticipoEstado;
 import com.novafacts.backend.anticipo.repository.AnticipoRepository;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.repository.UserRepository;
 import com.novafacts.backend.reservation.entity.Reservation;
 import com.novafacts.backend.reservation.repository.ReservationRepository;
+import com.novafacts.backend.common.PageResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -32,8 +37,9 @@ public class AnticipoService {
     }
 
     @Transactional(readOnly = true)
-    public List<AnticipoResponse> findAll() {
-        return anticipoRepository.findAll().stream().map(this::toResponse).toList();
+    public PageResponse<AnticipoResponse> findAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("registradoEn").descending());
+        return new PageResponse<>(anticipoRepository.findAll(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +71,7 @@ public class AnticipoService {
         anticipo.setMonto(request.getMonto());
         anticipo.setFechaPago(request.getFechaPago());
         anticipo.setMetodoPago(request.getMetodoPago());
-        anticipo.setEstado("registrado");
+        anticipo.setEstado(AnticipoEstado.REGISTRADO);
 
         return toResponse(anticipoRepository.save(anticipo));
     }
@@ -73,9 +79,13 @@ public class AnticipoService {
     @Transactional
     public void delete(Long id) {
         Anticipo anticipo = getOrThrow(id);
-        if ("aplicado".equals(anticipo.getEstado())) {
+        if (anticipo.getEstado() == AnticipoEstado.APLICADO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se puede eliminar un anticipo ya aplicado a una factura");
+        }
+        if (anticipo.getEstado() == AnticipoEstado.DEVUELTO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede eliminar un anticipo que ya tiene una devolución asociada");
         }
         anticipoRepository.delete(anticipo);
     }
@@ -95,7 +105,7 @@ public class AnticipoService {
                 a.getMonto(),
                 a.getFechaPago(),
                 a.getMetodoPago(),
-                a.getEstado(),
+                a.getEstado().name().toLowerCase(),
                 a.getRegistradoEn()
         );
     }

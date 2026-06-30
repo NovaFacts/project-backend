@@ -1,6 +1,7 @@
 package com.novafacts.backend.dashboard;
 
 import com.novafacts.backend.anticipo.entity.Anticipo;
+import com.novafacts.backend.anticipo.entity.AnticipoEstado;
 import com.novafacts.backend.anticipo.repository.AnticipoRepository;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.repository.UserRepository;
@@ -158,7 +159,7 @@ class DashboardControllerTest {
         anticipo.setUsuario(savedUser);
         anticipo.setMonto(new BigDecimal("476000.00"));
         anticipo.setFechaPago(LocalDate.now());
-        anticipo.setEstado("registrado");
+        anticipo.setEstado(AnticipoEstado.REGISTRADO);
         anticipoRepository.save(anticipo);
 
         mockMvc.perform(get("/api/dashboard"))

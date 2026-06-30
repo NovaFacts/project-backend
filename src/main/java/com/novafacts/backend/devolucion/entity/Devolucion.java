@@ -33,8 +33,9 @@ public class Devolucion {
     @Column(name = "metodo", length = 80)
     private String metodo;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 50)
-    private String estado;
+    private DevolucionEstado estado;
 
     @Column(name = "generada_en", nullable = false, updatable = false)
     private LocalDateTime generadaEn;
@@ -66,8 +67,8 @@ public class Devolucion {
     public String getMetodo()                          { return metodo; }
     public void setMetodo(String metodo)               { this.metodo = metodo; }
 
-    public String getEstado()                          { return estado; }
-    public void setEstado(String estado)               { this.estado = estado; }
+    public DevolucionEstado getEstado()                { return estado; }
+    public void setEstado(DevolucionEstado estado)     { this.estado = estado; }
 
     public LocalDateTime getGeneradaEn()               { return generadaEn; }
 

@@ -2,6 +2,7 @@ package com.novafacts.backend.devolucion;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novafacts.backend.anticipo.entity.Anticipo;
+import com.novafacts.backend.anticipo.entity.AnticipoEstado;
 import com.novafacts.backend.anticipo.repository.AnticipoRepository;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.repository.UserRepository;
@@ -131,7 +132,7 @@ class DevolucionControllerTest {
         anticipo.setUsuario(savedUser);
         anticipo.setMonto(new BigDecimal("200000.00"));
         anticipo.setFechaPago(LocalDate.of(2027, 3, 20));
-        anticipo.setEstado("registrado");
+        anticipo.setEstado(AnticipoEstado.REGISTRADO);
         savedAnticipo = anticipoRepository.save(anticipo);
     }
 

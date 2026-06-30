@@ -23,6 +23,7 @@ public class CreateReservationRequest {
     @Size(max = 150, message = "El nombre del cliente no puede superar 150 caracteres")
     private String clienteNombre;
 
+    @Email(message = "El formato del email del cliente no es válido")
     @Size(max = 150, message = "El email del cliente no puede superar 150 caracteres")
     private String clienteEmail;
 

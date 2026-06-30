@@ -11,4 +11,7 @@ public interface PenalidadRepository extends JpaRepository<Penalidad, Long> {
 
     @Query("SELECT p FROM Penalidad p WHERE p.reserva.id = :reservaId")
     List<Penalidad> findByReservaId(@Param("reservaId") Long reservaId);
+
+    @Query("SELECT COUNT(p) > 0 FROM Penalidad p WHERE p.reserva.id = :reservaId")
+    boolean existsByReservaId(@Param("reservaId") Long reservaId);
 }

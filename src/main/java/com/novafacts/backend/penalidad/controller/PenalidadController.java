@@ -1,5 +1,6 @@
 package com.novafacts.backend.penalidad.controller;
 
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.penalidad.dto.PenalidadRequest;
 import com.novafacts.backend.penalidad.dto.PenalidadResponse;
 import com.novafacts.backend.penalidad.service.PenalidadService;
@@ -21,8 +22,11 @@ public class PenalidadController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PenalidadResponse>> getAll() {
-        return ResponseEntity.ok(penalidadService.findAll());
+    public ResponseEntity<PageResponse<PenalidadResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(penalidadService.findAll(page, Math.min(size, 100)));
     }
 
     @GetMapping("/{id}")

@@ -1,0 +1,37 @@
+# The Dockerfile only runs: COPY target/*.jar app.jar
+# Everything else is excluded to minimise the build context sent to the daemon.
+
+# VCS metadata
+.git
+.gitignore
+.gitattributes
+.github
+
+# IDE and tooling state
+.idea
+.claude
+
+# Maven source and toolchain — JAR is pre-built before docker build runs
+src
+.mvn
+mvnw
+mvnw.cmd
+pom.xml
+
+# Build output: exclude the full target tree, then re-include only the runnable JAR
+target
+!target/*.jar
+
+# Project files not consumed by the image build
+AUDIT.md
+README.md
+HELP.md
+Esquema_BD.sql
+docker-compose.yml
+Dockerfile
+setup.sh
+*.txt
+
+# Secrets and environment files — must never enter the build context
+.env
+.env.example

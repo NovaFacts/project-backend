@@ -2,6 +2,7 @@ package com.novafacts.backend.anticipo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novafacts.backend.anticipo.entity.Anticipo;
+import com.novafacts.backend.anticipo.entity.AnticipoEstado;
 import com.novafacts.backend.anticipo.repository.AnticipoRepository;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.repository.UserRepository;
@@ -229,7 +230,7 @@ class AnticipoControllerTest {
         applied.setUsuario(userRepository.findByUsername("contador@test.com").orElseThrow());
         applied.setMonto(new BigDecimal("200000.00"));
         applied.setFechaPago(LocalDate.of(2027, 4, 10));
-        applied.setEstado("aplicado");
+        applied.setEstado(AnticipoEstado.APLICADO);
         Anticipo saved = anticipoRepository.save(applied);
 
         mockMvc.perform(delete("/api/anticipos/" + saved.getId()))

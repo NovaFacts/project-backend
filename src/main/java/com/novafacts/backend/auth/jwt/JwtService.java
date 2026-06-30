@@ -21,8 +21,16 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long expiration;
 
+    @Value("${jwt.issuer}")
+    private String issuer;
+
+    @Value("${jwt.audience}")
+    private String audience;
+
     public String generateToken(String username, String rolNombre) {
         return Jwts.builder()
+                .issuer(issuer)
+                .audience().add(audience).and()
                 .subject(username)
                 .claim("rol", rolNombre)
                 .issuedAt(new Date(System.currentTimeMillis()))
@@ -55,6 +63,8 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
+                .requireIssuer(issuer)
+                .requireAudience(audience)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

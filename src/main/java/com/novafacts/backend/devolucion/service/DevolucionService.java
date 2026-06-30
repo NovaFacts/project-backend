@@ -1,15 +1,21 @@
 package com.novafacts.backend.devolucion.service;
 
 import com.novafacts.backend.anticipo.entity.Anticipo;
+import com.novafacts.backend.anticipo.entity.AnticipoEstado;
 import com.novafacts.backend.anticipo.repository.AnticipoRepository;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.repository.UserRepository;
 import com.novafacts.backend.devolucion.dto.DevolucionRequest;
 import com.novafacts.backend.devolucion.dto.DevolucionResponse;
 import com.novafacts.backend.devolucion.entity.Devolucion;
+import com.novafacts.backend.devolucion.entity.DevolucionEstado;
 import com.novafacts.backend.devolucion.repository.DevolucionRepository;
 import com.novafacts.backend.reservation.entity.Reservation;
 import com.novafacts.backend.reservation.repository.ReservationRepository;
+import com.novafacts.backend.common.PageResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -40,8 +46,9 @@ public class DevolucionService {
     }
 
     @Transactional(readOnly = true)
-    public List<DevolucionResponse> findAll() {
-        return devolucionRepository.findAll().stream().map(this::toResponse).toList();
+    public PageResponse<DevolucionResponse> findAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("generadaEn").descending());
+        return new PageResponse<>(devolucionRepository.findAll(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +78,14 @@ public class DevolucionService {
                     "El anticipo indicado no pertenece a la reserva");
         }
 
+        // CRITICAL-3: guard against double-refund.
+        // APLICADO means the anticipo was already deducted from a factura.
+        // DEVUELTO means a prior devolucion already exists for this anticipo.
+        if (anticipo.getEstado() != AnticipoEstado.REGISTRADO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El anticipo ya fue aplicado a una factura o devuelto y no puede ser reembolsado");
+        }
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User usuario = userRepository.findByUsername(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
@@ -84,10 +99,9 @@ public class DevolucionService {
         devolucion.setUsuario(usuario);
         devolucion.setMonto(monto);
         devolucion.setMetodo(request.getMetodo());
-        devolucion.setEstado("pendiente");
+        devolucion.setEstado(DevolucionEstado.PENDIENTE);
 
-        // Mark the anticipo as devuelto
-        anticipo.setEstado("devuelto");
+        anticipo.setEstado(AnticipoEstado.DEVUELTO);
         anticipoRepository.save(anticipo);
 
         return toResponse(devolucionRepository.save(devolucion));
@@ -96,11 +110,11 @@ public class DevolucionService {
     @Transactional
     public DevolucionResponse procesar(Long id) {
         Devolucion devolucion = getOrThrow(id);
-        if (!"pendiente".equals(devolucion.getEstado())) {
+        if (devolucion.getEstado() != DevolucionEstado.PENDIENTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden procesar devoluciones en estado pendiente");
         }
-        devolucion.setEstado("procesada");
+        devolucion.setEstado(DevolucionEstado.PROCESADA);
         devolucion.setProcesadaEn(LocalDateTime.now());
         return toResponse(devolucionRepository.save(devolucion));
     }
@@ -108,21 +122,27 @@ public class DevolucionService {
     @Transactional
     public DevolucionResponse rechazar(Long id) {
         Devolucion devolucion = getOrThrow(id);
-        if (!"pendiente".equals(devolucion.getEstado())) {
+        if (devolucion.getEstado() != DevolucionEstado.PENDIENTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden rechazar devoluciones en estado pendiente");
         }
-        devolucion.setEstado("rechazada");
+        Anticipo anticipo = devolucion.getAnticipo();
+        anticipo.setEstado(AnticipoEstado.REGISTRADO);
+        anticipoRepository.save(anticipo);
+        devolucion.setEstado(DevolucionEstado.RECHAZADA);
         return toResponse(devolucionRepository.save(devolucion));
     }
 
     @Transactional
     public void delete(Long id) {
         Devolucion devolucion = getOrThrow(id);
-        if (!"pendiente".equals(devolucion.getEstado())) {
+        if (devolucion.getEstado() != DevolucionEstado.PENDIENTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden eliminar devoluciones en estado pendiente");
         }
+        Anticipo anticipo = devolucion.getAnticipo();
+        anticipo.setEstado(AnticipoEstado.REGISTRADO);
+        anticipoRepository.save(anticipo);
         devolucionRepository.delete(devolucion);
     }
 
@@ -141,7 +161,7 @@ public class DevolucionService {
                 d.getUsuario().getNombre(),
                 d.getMonto(),
                 d.getMetodo(),
-                d.getEstado(),
+                d.getEstado().name().toLowerCase(),
                 d.getGeneradaEn(),
                 d.getProcesadaEn()
         );

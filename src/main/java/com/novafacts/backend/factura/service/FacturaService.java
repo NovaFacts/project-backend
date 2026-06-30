@@ -1,5 +1,8 @@
 package com.novafacts.backend.factura.service;
 
+import com.novafacts.backend.anticipo.entity.Anticipo;
+import com.novafacts.backend.anticipo.entity.AnticipoEstado;
+import com.novafacts.backend.anticipo.repository.AnticipoRepository;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.repository.UserRepository;
 import com.novafacts.backend.factura.dto.FacturaRequest;
@@ -27,16 +30,19 @@ import java.util.UUID;
 @Service
 public class FacturaService {
 
-    private final FacturaRepository facturaRepository;
+    private final FacturaRepository    facturaRepository;
     private final ReservationRepository reservationRepository;
-    private final UserRepository userRepository;
+    private final AnticipoRepository   anticipoRepository;
+    private final UserRepository       userRepository;
 
     public FacturaService(FacturaRepository facturaRepository,
                           ReservationRepository reservationRepository,
+                          AnticipoRepository anticipoRepository,
                           UserRepository userRepository) {
-        this.facturaRepository   = facturaRepository;
+        this.facturaRepository    = facturaRepository;
         this.reservationRepository = reservationRepository;
-        this.userRepository      = userRepository;
+        this.anticipoRepository   = anticipoRepository;
+        this.userRepository       = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -83,12 +89,18 @@ public class FacturaService {
         BigDecimal descuentoAnticipo = nullSafe(request.getDescuentoAnticipo());
         BigDecimal recargoPenalidad  = nullSafe(request.getRecargoPenalidad());
         BigDecimal impuestos         = nullSafe(request.getImpuestos());
-        // Backend enforces calculation — frontend total is ignored
         BigDecimal total = subtotal
                 .subtract(descuentoAnticipo)
                 .add(recargoPenalidad)
                 .add(impuestos)
                 .setScale(2, RoundingMode.HALF_UP);
+
+        // CRITICAL-2: if the caller identified the anticipo being deducted, mark it
+        // APLICADO atomically within this transaction so that a subsequent refund via
+        // DevolucionService cannot be created for the same advance payment.
+        if (request.getAnticipoId() != null) {
+            applyAnticipo(request.getAnticipoId(), reserva.getId(), descuentoAnticipo);
+        }
 
         String numeroFactura = "FAC-" + UUID.randomUUID().toString()
                 .replace("-", "").substring(0, 8).toUpperCase();
@@ -103,6 +115,7 @@ public class FacturaService {
         factura.setImpuestos(impuestos);
         factura.setTotal(total);
         factura.setEstado(InvoiceStatus.PENDING);
+        factura.setUrlDocumento(request.getUrlDocumento());
 
         return toResponse(facturaRepository.save(factura));
     }
@@ -137,6 +150,36 @@ public class FacturaService {
                     "No se puede eliminar una factura ya emitida");
         }
         facturaRepository.delete(factura);
+    }
+
+    // ── private helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Validates the anticipo and transitions it to APLICADO within the same
+     * transaction as the Factura INSERT. Both writes commit or roll back together.
+     */
+    private void applyAnticipo(Long anticipoId, Long reservaId, BigDecimal descuentoAnticipo) {
+        if (descuentoAnticipo.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El descuento por anticipo debe ser mayor a cero cuando se especifica un anticipoId");
+        }
+
+        Anticipo anticipo = anticipoRepository.findById(anticipoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Anticipo no encontrado"));
+
+        if (!anticipo.getReserva().getId().equals(reservaId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El anticipo indicado no pertenece a la reserva que se está facturando");
+        }
+
+        if (anticipo.getEstado() != AnticipoEstado.REGISTRADO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El anticipo ya fue aplicado a una factura o devuelto y no puede usarse de nuevo");
+        }
+
+        anticipo.setEstado(AnticipoEstado.APLICADO);
+        anticipoRepository.save(anticipo);
     }
 
     private Factura getOrThrow(Long id) {

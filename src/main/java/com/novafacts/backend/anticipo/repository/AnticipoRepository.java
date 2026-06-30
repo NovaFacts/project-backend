@@ -15,4 +15,7 @@ public interface AnticipoRepository extends JpaRepository<Anticipo, Long> {
 
     @Query("SELECT SUM(a.monto) FROM Anticipo a")
     BigDecimal sumTotalMonto();
+
+    @Query("SELECT COUNT(a) > 0 FROM Anticipo a WHERE a.reserva.id = :reservaId")
+    boolean existsByReservaId(@Param("reservaId") Long reservaId);
 }

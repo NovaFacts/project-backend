@@ -89,7 +89,7 @@ cd project-backend || exit
 
 chmod +x mvnw
 
-./mvnw clean compile
+./mvnw clean package
 
 echo ""
 echo "Ejecutando pruebas..."
@@ -104,7 +104,7 @@ echo ""
 echo "Backend:"
 cd project-backend || exit
 sudo docker compose down
-sudo docker compose up -d
+sudo docker compose up --build -d
 echo ""
 echo "Frontend:"
 cd ..

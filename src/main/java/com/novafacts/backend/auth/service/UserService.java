@@ -1,8 +1,20 @@
 package com.novafacts.backend.auth.service;
 
+import java.util.Optional;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.novafacts.backend.auth.dto.CreateUserRequest;
 import com.novafacts.backend.auth.dto.LoginRequest;
 import com.novafacts.backend.auth.dto.LoginResponse;
-import com.novafacts.backend.auth.dto.CreateUserRequest;
 import com.novafacts.backend.auth.dto.UserResponse;
 import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.jwt.JwtService;
@@ -11,17 +23,19 @@ import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.rol.dto.RolResponse;
 import com.novafacts.backend.rol.entity.Rol;
 import com.novafacts.backend.rol.repository.RolRepository;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class UserService {
+
+    /**
+     * LOW-17: A valid BCrypt hash used solely for timing equalization when a login
+     * request is made for a non-existent email.  By calling passwordEncoder.matches()
+     * against this dummy hash, the "user not found" path takes the same ~100ms as the
+     * "user found, wrong password" path — preventing an attacker from enumerating
+     * registered emails by comparing response times.
+     */
+    private static final String DUMMY_HASH =
+            "$2b$10$M4yBMutDHHxpjiCDu6tFmeCXqplQzntLzsK5SsaizqyMIUE3oHCPi";
 
     private final UserRepository userRepository;
     private final RolRepository rolRepository;
@@ -45,6 +59,11 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Usuario no encontrado"));
+        String authenticatedUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (authenticatedUsername.equals(user.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No puedes desactivar tu propia cuenta de administrador");
+        }
         user.setActivo(false);
         userRepository.save(user);
     }
@@ -73,23 +92,31 @@ public class UserService {
     @Transactional(readOnly = true)
     public PageResponse<UserResponse> getUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("nombre").ascending());
-        return new PageResponse<>(userRepository.findAll(pageable).map(this::toResponse));
+        // MEDIUM-16: exclude soft-deleted users from the management listing
+        return new PageResponse<>(userRepository.findByActivoTrue(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getEmail())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                        "Credenciales inválidas"));
+        Optional<User> userOpt = userRepository.findByUsername(request.getEmail());
+
+        if (userOpt.isEmpty()) {
+            // LOW-17: timing equalization — run a dummy BCrypt comparison so that
+            // the "email not found" path takes the same ~100ms as the "wrong password"
+            // path. Without this, an attacker can enumerate registered emails by
+            // observing that non-existent-user responses arrive faster.
+            passwordEncoder.matches(request.getPassword(), DUMMY_HASH);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+
+        User user = userOpt.get();
 
         if (!Boolean.TRUE.equals(user.getActivo())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Cuenta de usuario desactivada");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Credenciales inválidas");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
         String token = jwtService.generateToken(user.getUsername(), user.getRol().getNombre());

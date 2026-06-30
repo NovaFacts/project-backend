@@ -32,8 +32,9 @@ public class Anticipo {
     @Column(name = "metodo_pago", length = 80)
     private String metodoPago;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 50)
-    private String estado;
+    private AnticipoEstado estado;
 
     @Column(name = "registrado_en", nullable = false, updatable = false)
     private LocalDateTime registradoEn;
@@ -62,8 +63,8 @@ public class Anticipo {
     public String getMetodoPago() { return metodoPago; }
     public void setMetodoPago(String metodoPago) { this.metodoPago = metodoPago; }
 
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
+    public AnticipoEstado getEstado() { return estado; }
+    public void setEstado(AnticipoEstado estado) { this.estado = estado; }
 
     public LocalDateTime getRegistradoEn() { return registradoEn; }
 }

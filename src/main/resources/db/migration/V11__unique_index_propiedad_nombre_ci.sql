@@ -1,0 +1,12 @@
+-- V11__unique_index_propiedad_nombre_ci.sql
+-- M-6: Restore case-insensitive uniqueness on propiedad.nombre at the database level.
+--
+-- History: V1 created propiedad with UNIQUE on nombre (propiedad_nombre_key).
+-- V3 dropped that constraint to align with Esquema_BD.sql, which omitted it.
+-- PropertyService compensated with existsByNameIgnoreCase() / existsByNameIgnoreCaseAndIdNot(),
+-- but application-level checks are subject to a TOCTOU race under concurrent requests.
+-- This expression index closes the gap without requiring the CITEXT extension.
+--
+-- NOTE: this migration will fail if case-insensitively duplicate nombres exist in the
+-- propiedad table. Resolve duplicates manually before applying if that occurs.
+CREATE UNIQUE INDEX idx_propiedad_nombre_ci ON propiedad (LOWER(nombre));

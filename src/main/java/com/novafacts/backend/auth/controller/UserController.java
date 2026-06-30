@@ -31,7 +31,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(userService.getUsers(page, size));
+        return ResponseEntity.ok(userService.getUsers(page, Math.min(size, 100)));
     }
 
     @DeleteMapping("/{id}")

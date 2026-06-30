@@ -23,7 +23,7 @@ public class PropertyService {
 
     @Transactional(readOnly = true)
     public List<PropertyResponse> findAll() {
-        return propertyRepository.findAll().stream()
+        return propertyRepository.findByActivaTrue().stream()
                 .map(this::toResponse)
                 .toList();
     }

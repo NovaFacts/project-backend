@@ -4,10 +4,15 @@ import com.novafacts.backend.auth.entity.User;
 import com.novafacts.backend.auth.repository.UserRepository;
 import com.novafacts.backend.factura.entity.Factura;
 import com.novafacts.backend.factura.repository.FacturaRepository;
+import com.novafacts.backend.invoice.entity.InvoiceStatus;
 import com.novafacts.backend.notacredito.dto.NotaCreditoRequest;
 import com.novafacts.backend.notacredito.dto.NotaCreditoResponse;
 import com.novafacts.backend.notacredito.entity.NotaCredito;
 import com.novafacts.backend.notacredito.repository.NotaCreditoRepository;
+import com.novafacts.backend.common.PageResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,8 +40,9 @@ public class NotaCreditoService {
     }
 
     @Transactional(readOnly = true)
-    public List<NotaCreditoResponse> findAll() {
-        return notaCreditoRepository.findAll().stream().map(this::toResponse).toList();
+    public PageResponse<NotaCreditoResponse> findAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("emitidaEn").descending());
+        return new PageResponse<>(notaCreditoRepository.findAll(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -56,6 +62,18 @@ public class NotaCreditoService {
         Factura factura = facturaRepository.findById(request.getFacturaId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Factura no encontrada"));
+
+        // MEDIUM-10: cannot issue a credit note against a cancelled invoice
+        if (factura.getEstado() == InvoiceStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede emitir nota de crédito para una factura anulada.");
+        }
+
+        // MEDIUM-11: credit note amount must not exceed the invoice total
+        if (request.getMonto().compareTo(factura.getTotal()) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El monto de la nota de crédito no puede exceder el total de la factura.");
+        }
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User usuario = userRepository.findByUsername(email)
@@ -78,7 +96,12 @@ public class NotaCreditoService {
 
     @Transactional
     public void delete(Long id) {
-        notaCreditoRepository.delete(getOrThrow(id));
+        NotaCredito nota = getOrThrow(id);
+        if (nota.getFactura().getEstado() == InvoiceStatus.PAID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede eliminar una nota de crédito asociada a una factura pagada");
+        }
+        notaCreditoRepository.delete(nota);
     }
 
     private NotaCredito getOrThrow(Long id) {

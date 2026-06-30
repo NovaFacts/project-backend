@@ -3,6 +3,7 @@ package com.novafacts.backend.anticipo.controller;
 import com.novafacts.backend.anticipo.dto.AnticipoRequest;
 import com.novafacts.backend.anticipo.dto.AnticipoResponse;
 import com.novafacts.backend.anticipo.service.AnticipoService;
+import com.novafacts.backend.common.PageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +22,11 @@ public class AnticipoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AnticipoResponse>> getAll() {
-        return ResponseEntity.ok(anticipoService.findAll());
+    public ResponseEntity<PageResponse<AnticipoResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(anticipoService.findAll(page, Math.min(size, 100)));
     }
 
     @GetMapping("/{id}")

@@ -1,6 +1,7 @@
 package com.novafacts.backend.config;
 
 import com.novafacts.backend.auth.filter.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,6 +25,12 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    // Injected from application.properties: cors.allowed-origins
+    // Override at runtime via CORS_ALLOWED_ORIGINS environment variable.
+    // Multiple origins are comma-separated: https://app.novafacts.com,https://admin.novafacts.com
+    @Value("${cors.allowed-origins:http://localhost:5173}")
+    private List<String> allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -51,6 +58,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,   "/api/anticipos/**", "/api/penalidades/**").hasAnyRole("ADMINISTRADOR", "CONTADOR", "AUXILIAR_CONTABLE")
                         .requestMatchers(HttpMethod.PUT,    "/api/anticipos/**", "/api/penalidades/**").hasAnyRole("ADMINISTRADOR", "CONTADOR", "AUXILIAR_CONTABLE")
                         .requestMatchers(HttpMethod.DELETE, "/api/anticipos/**", "/api/penalidades/**").hasAnyRole("ADMINISTRADOR", "CONTADOR", "AUXILIAR_CONTABLE")
+                        // GET on financial data restricted by role (matches write-operation restrictions above)
+                        .requestMatchers(HttpMethod.GET, "/api/anticipos/**", "/api/penalidades/**").hasAnyRole("ADMINISTRADOR", "CONTADOR", "AUXILIAR_CONTABLE")
+                        .requestMatchers(HttpMethod.GET, "/api/facturas/**", "/api/notas-credito/**", "/api/devoluciones/**").hasAnyRole("ADMINISTRADOR", "CONTADOR")
+                        // Role list is only needed by the user-creation form, which is admin-only
+                        .requestMatchers(HttpMethod.GET, "/api/roles/**").hasRole("ADMINISTRADOR")
                         // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
@@ -65,7 +77,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Content-Type", "Authorization"));
         configuration.setAllowCredentials(false);
