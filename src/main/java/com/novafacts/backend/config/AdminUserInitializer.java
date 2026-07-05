@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminUserInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminUserInitializer.class);
-    private static final int ROL_ADMINISTRADOR_ID = 1;
+    private static final String ROL_ADMINISTRADOR_NOMBRE = "Administrador";
     private static final String DEFAULT_PASSWORD   = "Admin2024!";
 
     @Value("${admin.init.email:admin@novafacts.com}")
@@ -58,14 +58,14 @@ public class AdminUserInitializer implements ApplicationRunner {
             return;
         }
 
-        Rol rolAdmin = rolRepository.findById(ROL_ADMINISTRADOR_ID).orElse(null);
+        Rol rolAdmin = rolRepository.findByNombre(ROL_ADMINISTRADOR_NOMBRE).orElse(null);
         if (rolAdmin == null) {
-            // Expected in test contexts (H2, no Flyway). Skipped safely.
+            // Expected in test contexts where Flyway does not run. Skipped safely.
             // In production this means Flyway V2 did not run — investigate before proceeding.
-            log.warn("AdminUserInitializer: rol Administrador (id={}) no encontrado — "
+            log.warn("AdminUserInitializer: rol '{}' no encontrado — "
                     + "omitiendo creación del usuario admin. "
                     + "En producción verifique que Flyway V2 ejecutó correctamente.",
-                    ROL_ADMINISTRADOR_ID);
+                    ROL_ADMINISTRADOR_NOMBRE);
             return;
         }
 

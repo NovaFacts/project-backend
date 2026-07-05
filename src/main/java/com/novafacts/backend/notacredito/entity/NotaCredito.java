@@ -14,11 +14,16 @@ public class NotaCredito {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    // Issue 9 (N+1 remediation, final module): both associations are read via a real
+    // column in NotaCreditoService.toResponse() (getNumeroFactura(), getNombre()), not
+    // just getId(), so plain LAZY isn't enough on its own — NotaCreditoRepository's
+    // findAllWithAssociations() combines both into one JOIN FETCH, exactly like
+    // ReservationRepository.findAllWithAssociations() did for its four associations.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factura_id", nullable = false)
     private Factura factura;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private User usuario;
 

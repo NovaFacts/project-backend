@@ -59,6 +59,19 @@ class PropertyControllerTest {
     }
 
     @Test
+    void get_all_returns_200_with_page_response() throws Exception {
+        mockMvc.perform(get("/api/propiedades"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].name").value("Propiedad Test"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
     void create_property_returns_201() throws Exception {
         mockMvc.perform(post("/api/propiedades")
                         .contentType(MediaType.APPLICATION_JSON)

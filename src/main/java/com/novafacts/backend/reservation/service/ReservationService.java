@@ -42,7 +42,7 @@ public class ReservationService {
     private final PoliticaCancelacionRepository   politicaRepository;
     private final PropertyRepository              propertyRepository;
     private final UserRepository                  userRepository;
-    // financial-child repositories — used only in delete() guard (read-only)
+    // financial-child repositories — used in delete() and update() guards (read-only)
     private final AnticipoRepository              anticipoRepository;
     private final PenalidadRepository             penalidadRepository;
     private final FacturaRepository               facturaRepository;
@@ -73,7 +73,7 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public PageResponse<ReservationResponse> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("checkIn").descending());
-        return new PageResponse<>(reservationRepository.findAll(pageable).map(this::toResponse));
+        return new PageResponse<>(reservationRepository.findAllWithAssociations(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -139,6 +139,22 @@ public class ReservationService {
         // Validate the status transition before acquiring the pessimistic lock
         // so we fail fast without holding a DB row lock for an invalid request.
         validateStatusTransition(reservation.getStatus(), request.getStatus());
+
+        // H-1: reject property reassignment when financial records exist for this reservation.
+        // Moving the reservation to a different property retroactively re-attributes all existing
+        // anticipos, penalidades, facturas, and devoluciones to the new property, producing
+        // accounting inconsistencies. Same guard pattern and repositories as delete().
+        if (!reservation.getPropertyId().equals(request.getPropertyId())) {
+            boolean hasFinancialHistory =
+                    anticipoRepository.existsByReservaId(id)  ||
+                    penalidadRepository.existsByReservaId(id) ||
+                    facturaRepository.existsByReservaId(id)   ||
+                    devolucionRepository.existsByReservaId(id);
+            if (hasFinancialHistory) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No se puede cambiar la propiedad de una reserva que tiene historial financiero asociado.");
+            }
+        }
 
         Canal canal             = getCanalOrThrow(request.getCanalId());
         Temporada temporada     = getTemporadaOrThrow(request.getTemporadaId());

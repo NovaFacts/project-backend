@@ -48,7 +48,7 @@ public class DevolucionService {
     @Transactional(readOnly = true)
     public PageResponse<DevolucionResponse> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("generadaEn").descending());
-        return new PageResponse<>(devolucionRepository.findAll(pageable).map(this::toResponse));
+        return new PageResponse<>(devolucionRepository.findAllWithUsuario(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -69,7 +69,10 @@ public class DevolucionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Reserva no encontrada"));
 
-        Anticipo anticipo = anticipoRepository.findById(request.getAnticipoId())
+        // C-2: lock the anticipo row before checking its estado, so a concurrent
+        // FacturaService.applyAnticipo() call on the same anticipoId cannot also pass
+        // the REGISTRADO check and apply what this transaction is about to refund.
+        Anticipo anticipo = anticipoRepository.findByIdForUpdate(request.getAnticipoId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Anticipo no encontrado"));
 

@@ -1,16 +1,18 @@
 package com.novafacts.backend.property.service;
 
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.property.dto.CreatePropertyRequest;
 import com.novafacts.backend.property.dto.PropertyResponse;
 import com.novafacts.backend.property.dto.UpdatePropertyRequest;
 import com.novafacts.backend.property.entity.Property;
 import com.novafacts.backend.property.repository.PropertyRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @Service
 public class PropertyService {
@@ -22,10 +24,9 @@ public class PropertyService {
     }
 
     @Transactional(readOnly = true)
-    public List<PropertyResponse> findAll() {
-        return propertyRepository.findByActivaTrue().stream()
-                .map(this::toResponse)
-                .toList();
+    public PageResponse<PropertyResponse> findAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+        return new PageResponse<>(propertyRepository.findByActivaTrue(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)

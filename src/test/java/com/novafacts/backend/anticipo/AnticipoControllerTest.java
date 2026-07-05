@@ -36,6 +36,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -160,6 +161,19 @@ class AnticipoControllerTest {
                                 {"reservaId": %d}
                                 """.formatted(savedReservation.getId())))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void create_anticipo_with_empty_body_returns_400_with_all_errors_joined() throws Exception {
+        // An empty body violates reservaId @NotNull, monto @NotNull, and fechaPago @NotNull
+        // simultaneously. The response must still use the "error" string key (backward-compatible
+        // contract) and the value must contain all three messages joined by "; ".
+        mockMvc.perform(post("/api/anticipos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").isString())
+                .andExpect(jsonPath("$.error", containsString(";")));
     }
 
     @Test

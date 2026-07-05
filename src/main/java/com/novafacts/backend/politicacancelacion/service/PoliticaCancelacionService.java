@@ -6,6 +6,7 @@ import com.novafacts.backend.politicacancelacion.entity.PoliticaCancelacion;
 import com.novafacts.backend.politicacancelacion.repository.PoliticaCancelacionRepository;
 import com.novafacts.backend.property.entity.Property;
 import com.novafacts.backend.property.repository.PropertyRepository;
+import com.novafacts.backend.reservation.repository.ReservationRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,12 +18,15 @@ import java.util.List;
 public class PoliticaCancelacionService {
 
     private final PoliticaCancelacionRepository politicaRepository;
-    private final PropertyRepository propertyRepository;
+    private final PropertyRepository            propertyRepository;
+    private final ReservationRepository         reservationRepository;
 
     public PoliticaCancelacionService(PoliticaCancelacionRepository politicaRepository,
-                                      PropertyRepository propertyRepository) {
-        this.politicaRepository = politicaRepository;
-        this.propertyRepository = propertyRepository;
+                                      PropertyRepository propertyRepository,
+                                      ReservationRepository reservationRepository) {
+        this.politicaRepository    = politicaRepository;
+        this.propertyRepository    = propertyRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     @Transactional(readOnly = true)
@@ -66,9 +70,12 @@ public class PoliticaCancelacionService {
 
     @Transactional
     public void eliminar(Integer id) {
-        // FK violation from reserva.politica_cancelacion_id propagates as
-        // DataIntegrityViolationException → GlobalExceptionHandler → 409
-        politicaRepository.delete(getOrThrow(id));
+        PoliticaCancelacion politica = getOrThrow(id);
+        if (reservationRepository.existsByPoliticaCancelacionId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede eliminar la política de cancelación porque existen reservas que la referencian.");
+        }
+        politicaRepository.delete(politica);
     }
 
     private PoliticaCancelacion getOrThrow(Integer id) {

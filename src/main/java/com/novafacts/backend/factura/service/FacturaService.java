@@ -48,7 +48,7 @@ public class FacturaService {
     @Transactional(readOnly = true)
     public PageResponse<FacturaResponse> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("emitidaEn").descending());
-        return new PageResponse<>(facturaRepository.findAll(pageable).map(this::toResponse));
+        return new PageResponse<>(facturaRepository.findAllWithUsuario(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -164,7 +164,10 @@ public class FacturaService {
                     "El descuento por anticipo debe ser mayor a cero cuando se especifica un anticipoId");
         }
 
-        Anticipo anticipo = anticipoRepository.findById(anticipoId)
+        // C-2: lock the anticipo row before checking its estado, so a concurrent
+        // DevolucionService.create() call on the same anticipoId cannot also pass
+        // the REGISTRADO check and refund what this transaction is about to apply.
+        Anticipo anticipo = anticipoRepository.findByIdForUpdate(anticipoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Anticipo no encontrado"));
 

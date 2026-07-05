@@ -535,13 +535,13 @@ Ordered by impact-to-effort ratio:
 
 | # | Finding | Impact | Effort | Why First |
 |---|---------|--------|--------|-----------|
-| 1 | **C-1** — Add FK indexes via Flyway V12 | Critical performance | 15 min | Highest ROI: zero risk, immediate query performance improvement |
+000 | 1 | **C-1** — Add FK indexes via Flyway V12 | Critical performance | 15 min | Highest ROI: zero risk, immediate query performance improvement |
 | 2 | **M-8** — Replace H2 with Testcontainers PostgreSQL | High quality | 2–3 h | Migrations never tested in CI; a broken migration would cause prod outage |
-| 3 | **H-3** — Return all validation errors in `GlobalExceptionHandler` | High UX | 30 min | Low effort, high UX impact on all form workflows |
-| 4 | **M-3** — Strip whitespace from CORS origin list | High reliability | 15 min | Silent production failure for multi-origin setups |
-| 5 | **H-2** — Add pre-check in `TemporadaService.eliminar()` | Medium UX | 20 min | Actionable error message vs. cryptic "Conflicto de datos" |
+000 | 3 | **H-3** — Return all validation errors in `GlobalExceptionHandler` | High UX | 30 min | Low effort, high UX impact on all form workflows |
+000 | 4 | **M-3** — Strip whitespace from CORS origin list | High reliability | 15 min | Silent production failure for multi-origin setups |
+000 | 5 | **H-2** — Add pre-check in `TemporadaService.eliminar()` | Medium UX | 20 min | Actionable error message vs. cryptic "Conflicto de datos" |
 | 6 | **L-6** — Switch to JRE Docker image | Low security / cost | 2 min | Smaller container, smaller attack surface |
-| 7 | **H-1** — Guard property reassignment on reservations with financial history | High data integrity | 20 min | Prevents financial record inconsistency |
+000 | 7 | **H-1** — Guard property reassignment on reservations with financial history | High data integrity | 20 min | Prevents financial record inconsistency |
 | 8 | **M-7** — Add overlapping season validation | Medium data quality | 30 min | Prevents ambiguous financial reporting |
 | 9 | **M-4** — Fix seeder zero-monto devolucion + add DB CHECK constraint | Medium data integrity | 15 min | Dev environment data should match production constraints |
 | 10 | **L-3 + L-4 + L-8** — Add missing DB CHECK / UNIQUE constraints | Low data quality | 15 min | Single migration fixes three data-integrity gaps |

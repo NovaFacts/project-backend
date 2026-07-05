@@ -1,0 +1,13 @@
+-- V13__unique_index_temporada_nombre_ci.sql
+-- L-3: Enforce case-insensitive uniqueness on temporada.nombre at the database level.
+--
+-- History: V3 created temporada without any UNIQUE constraint on nombre.
+-- TemporadaRepository.findByNombre() assumes at most one row per name, but nothing
+-- enforced that. TemporadaService now compensates with existsByNombreIgnoreCase() /
+-- existsByNombreIgnoreCaseAndIdNot(), but application-level checks are subject to a
+-- TOCTOU race under concurrent requests. This expression index closes the gap without
+-- requiring the CITEXT extension.
+--
+-- NOTE: this migration will fail if case-insensitively duplicate nombres exist in the
+-- temporada table. Resolve duplicates manually before applying if that occurs.
+CREATE UNIQUE INDEX idx_temporada_nombre_ci ON temporada (LOWER(nombre));

@@ -42,7 +42,7 @@ public class PenalidadService {
     @Transactional(readOnly = true)
     public PageResponse<PenalidadResponse> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("calculadoEn").descending());
-        return new PageResponse<>(penalidadRepository.findAll(pageable).map(this::toResponse));
+        return new PageResponse<>(penalidadRepository.findAllWithUsuario(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)

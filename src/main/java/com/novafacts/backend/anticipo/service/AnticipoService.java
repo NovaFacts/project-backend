@@ -39,7 +39,7 @@ public class AnticipoService {
     @Transactional(readOnly = true)
     public PageResponse<AnticipoResponse> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("registradoEn").descending());
-        return new PageResponse<>(anticipoRepository.findAll(pageable).map(this::toResponse));
+        return new PageResponse<>(anticipoRepository.findAllWithUsuario(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)

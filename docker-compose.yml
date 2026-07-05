@@ -2,7 +2,7 @@
 services:
   # Servicio de la base de datos PostgreSQL
   postgres_db:
-    image: postgres:15
+    image: postgres:15.18-alpine
     container_name: novafacts_postgres
     restart: always
     environment:
@@ -43,6 +43,14 @@ services:
     depends_on:
       postgres_db:
         condition: service_healthy
+    healthcheck:
+      # wget (not curl) — that's what's actually present on the eclipse-temurin
+      # *-jre-alpine base image; --spider only checks reachability, no body downloaded.
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 # Volumen persistente para los datos de PostgreSQL
 volumes:

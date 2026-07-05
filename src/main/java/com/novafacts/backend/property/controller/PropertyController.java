@@ -1,5 +1,6 @@
 package com.novafacts.backend.property.controller;
 
+import com.novafacts.backend.common.PageResponse;
 import com.novafacts.backend.property.dto.CreatePropertyRequest;
 import com.novafacts.backend.property.dto.PropertyResponse;
 import com.novafacts.backend.property.dto.UpdatePropertyRequest;
@@ -8,8 +9,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/propiedades")
@@ -22,13 +21,16 @@ public class PropertyController {
     }
 
     @GetMapping
-    public List<PropertyResponse> getAll() {
-        return propertyService.findAll();
+    public ResponseEntity<PageResponse<PropertyResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(propertyService.findAll(page, Math.min(size, 100)));
     }
 
     @GetMapping("/{id}")
-    public PropertyResponse getById(@PathVariable Long id) {
-        return propertyService.findById(id);
+    public ResponseEntity<PropertyResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(propertyService.findById(id));
     }
 
     @PostMapping

@@ -42,7 +42,7 @@ public class NotaCreditoService {
     @Transactional(readOnly = true)
     public PageResponse<NotaCreditoResponse> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("emitidaEn").descending());
-        return new PageResponse<>(notaCreditoRepository.findAll(pageable).map(this::toResponse));
+        return new PageResponse<>(notaCreditoRepository.findAllWithAssociations(pageable).map(this::toResponse));
     }
 
     @Transactional(readOnly = true)

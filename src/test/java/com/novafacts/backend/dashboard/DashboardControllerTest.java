@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser
+@WithMockUser(roles = "ADMINISTRADOR")
 class DashboardControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -174,6 +174,31 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.cancelledInvoices").value(1))
                 .andExpect(jsonPath("$.totalAnticipos").value(1))
                 .andExpect(jsonPath("$.montoTotalAnticipos").value(476000.00));
+    }
+
+    // M-14: dashboard exposes financial aggregates (invoice/anticipo figures), so it must
+    // be restricted to the same roles as the anticipo/penalidad endpoints — verifying both
+    // the positive (authorized roles still work) and negative (Recepcionista is blocked) sides.
+
+    @Test
+    @WithMockUser(roles = "CONTADOR")
+    void getDashboard_asContador_returnsOk() throws Exception {
+        mockMvc.perform(get("/api/dashboard"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUXILIAR_CONTABLE")
+    void getDashboard_asAuxiliarContable_returnsOk() throws Exception {
+        mockMvc.perform(get("/api/dashboard"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "RECEPCIONISTA")
+    void getDashboard_asRecepcionista_returnsForbidden() throws Exception {
+        mockMvc.perform(get("/api/dashboard"))
+                .andExpect(status().isForbidden());
     }
 
     private Reservation saveReservation(Long propertyId, ReservationStatus status,

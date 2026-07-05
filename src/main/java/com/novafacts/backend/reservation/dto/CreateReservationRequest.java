@@ -31,7 +31,7 @@ public class CreateReservationRequest {
     private String clienteTelefono;
 
     @NotNull(message = "El monto total es obligatorio")
-    @DecimalMin(value = "0.00", inclusive = true, message = "El monto total no puede ser negativo")
+    @DecimalMin(value = "0.01", message = "El monto total debe ser mayor a cero")
     private BigDecimal montoTotal;
 
     @NotNull(message = "La fecha de inicio es obligatoria")

@@ -1,0 +1,76 @@
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Cancel a superseded run on the same branch/PR when new commits arrive, so CI
+# minutes aren't spent finishing a run that's already obsolete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default: this pipeline only needs to read the repo. No job
+# below requests anything broader.
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test (Java 21)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          # Built-in Maven dependency caching, keyed on pom.xml — the documented,
+          # recommended way to cache ~/.m2/repository (no hand-rolled actions/cache
+          # needed for this).
+          cache: maven
+
+      # The test suite (src/test/resources/application-test.properties) uses
+      # Testcontainers with a jdbc:tc:postgresql: URL, which starts its own
+      # PostgreSQL 15 container per test run automatically. GitHub-hosted
+      # ubuntu-latest runners have Docker preinstalled and running, so this
+      # needs no extra service container or setup in this workflow.
+      # No JWT_SECRET/POSTGRES_PASSWORD env vars are needed here: every property
+      # that's a bare, no-default ${PLACEHOLDER} in application.properties is
+      # given a concrete value by application-test.properties under the "test"
+      # profile, which takes precedence — confirmed empirically by running the
+      # full suite locally with neither variable set.
+      - name: Build and run tests
+        run: ./mvnw -B -ntp clean package
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload JaCoCo coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Proves the Dockerfile still builds against this run's freshly-packaged
+      # jar. No registry login, no push, no docker-compose up — build-only,
+      # exactly as required ("do not deploy anything").
+      - name: Build Docker image (build-only, no push)
+        run: docker build -t novafacts-backend:ci .
