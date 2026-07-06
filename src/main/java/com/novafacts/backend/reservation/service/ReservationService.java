@@ -134,10 +134,18 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse update(Long id, UpdateReservationRequest request) {
-        Reservation reservation = getOrThrow(id);
+        // H-3 (AUDIT_v5): lock the reservation row before reading its current status/
+        // fields, so a concurrent update on the same reservation cannot also read the
+        // same stale state and silently overwrite this transaction's changes once it
+        // commits (a lost update — reproduced live: two concurrent requests each
+        // returned 200 with different, mutually-exclusive field values, and the
+        // persisted row silently matched only whichever transaction committed last).
+        // The lock is acquired first, before any validation, unlike the property lock
+        // below — its contention scope is a single reservation row, not the shared
+        // property row every reservation on that property contends for, so validating
+        // first to avoid holding it isn't the same concern here.
+        Reservation reservation = getForUpdateOrThrow(id);
 
-        // Validate the status transition before acquiring the pessimistic lock
-        // so we fail fast without holding a DB row lock for an invalid request.
         validateStatusTransition(reservation.getStatus(), request.getStatus());
 
         // H-1: reject property reassignment when financial records exist for this reservation.
@@ -293,6 +301,13 @@ public class ReservationService {
 
     private Reservation getOrThrow(Long id) {
         return reservationRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Reserva no encontrada"));
+    }
+
+    /** H-3 (AUDIT_v5): same not-found message as getOrThrow(), but via the locked lookup. */
+    private Reservation getForUpdateOrThrow(Long id) {
+        return reservationRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Reserva no encontrada"));
     }

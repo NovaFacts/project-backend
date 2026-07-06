@@ -122,7 +122,12 @@ public class FacturaService {
 
     @Transactional
     public FacturaResponse emitir(Long id) {
-        Factura factura = getOrThrow(id);
+        // C-2 (AUDIT_v5): lock the row before checking its estado, so a concurrent
+        // anular() (or another emitir()) on the same factura cannot also read the
+        // same PENDING state and both succeed with contradictory outcomes. The
+        // second caller blocks here until the first transaction commits, then sees
+        // the updated estado and correctly hits the CONFLICT check below instead.
+        Factura factura = getForUpdateOrThrow(id);
         if (factura.getEstado() != InvoiceStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden emitir facturas en estado pendiente");
@@ -133,7 +138,8 @@ public class FacturaService {
 
     @Transactional
     public FacturaResponse anular(Long id) {
-        Factura factura = getOrThrow(id);
+        // C-2 (AUDIT_v5): same reasoning as emitir() above.
+        Factura factura = getForUpdateOrThrow(id);
         if (factura.getEstado() != InvoiceStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden anular facturas en estado pendiente");
@@ -187,6 +193,13 @@ public class FacturaService {
 
     private Factura getOrThrow(Long id) {
         return facturaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Factura no encontrada"));
+    }
+
+    /** C-2 (AUDIT_v5): same not-found message as getOrThrow(), but via the locked lookup. */
+    private Factura getForUpdateOrThrow(Long id) {
+        return facturaRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Factura no encontrada"));
     }

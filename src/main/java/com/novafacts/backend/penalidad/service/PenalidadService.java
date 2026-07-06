@@ -68,6 +68,17 @@ public class PenalidadService {
                     "Solo se puede crear una penalidad sobre una reserva cancelada");
         }
 
+        // C-1 (AUDIT_v5): only one penalty is allowed per cancelled reservation. Without
+        // this guard, sequential POST requests each pass the per-request policy-cap check
+        // below independently, letting the cumulative charged amount exceed the true
+        // maximum. Mirrors the identical existsByReservaId guard already used in
+        // FacturaService.create().
+        if (penalidadRepository.existsByReservaId(request.getReservaId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe una penalidad para esta reserva");
+        }
+
+
         // MEDIUM-12: montoAprobado must not exceed the maximum allowed by the cancellation policy.
         // Maximum penalty = montoTotal × (1 − porcentajeReembolso / 100)
         // Example: 50% refund policy on 1,000,000 COP → max penalty = 500,000 COP

@@ -173,15 +173,25 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
     // penalties by accounting staff, invoices and refunds by Contador/Administrador).
 
     private Map<String, User> seedUsers() {
-        Rol rolAdmin    = rolRepository.findByNombre("Administrador").orElseThrow();
         Rol rolContador = rolRepository.findByNombre("Contador").orElseThrow();
         Rol rolAuxiliar = rolRepository.findByNombre("Auxiliar contable").orElseThrow();
         Rol rolRecep    = rolRepository.findByNombre("Recepcionista").orElseThrow();
 
-        // admin@novafacts.com is guaranteed to exist already (AdminUserInitializer or Flyway V8).
-        // getOrCreateUser() returns the existing row without re-encoding the password.
+        // C-3 (AUDIT_v5): the administrator is created solely by AdminUserInitializer
+        // (@Order(LOWEST_PRECEDENCE - 10), which runs before this seeder's
+        // @Order(LOWEST_PRECEDENCE)), using whatever ADMIN_EMAIL/ADMIN_PASSWORD is
+        // configured. This seeder must not assume or hardcode a specific admin
+        // email/password — doing so previously recreated admin@novafacts.com/Admin2024!
+        // itself whenever a deployment configured a different ADMIN_EMAIL, reintroducing
+        // the exact hardcoded-admin vulnerability this fix closes. Look up whichever
+        // admin already exists instead.
+        User admin = userRepository.findAllByRolNombreOrderById("Administrador").stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se encontró ningún Administrador — AdminUserInitializer debería haber creado uno antes de este seeder."));
+
         return Map.of(
-            "admin",    getOrCreateUser("admin@novafacts.com",       "Admin2024!",  "Administrador Sistema", rolAdmin,    true),
+            "admin",    admin,
             "contador", getOrCreateUser("contador@novafacts.com",    "Conta2024!",  "María Fernanda García", rolContador, true),
             "auxiliar", getOrCreateUser("auxiliar@novafacts.com",    "Aux2024!",    "Carlos Eduardo López",  rolAuxiliar, true),
             "recep",    getOrCreateUser("recepcion@novafacts.com",   "Recep2024!",  "Ana Sofía Martínez",    rolRecep,    true)

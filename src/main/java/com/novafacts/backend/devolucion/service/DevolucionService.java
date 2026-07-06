@@ -112,7 +112,12 @@ public class DevolucionService {
 
     @Transactional
     public DevolucionResponse procesar(Long id) {
-        Devolucion devolucion = getOrThrow(id);
+        // C-2 (AUDIT_v5): lock the row before checking its estado, so a concurrent
+        // rechazar() (or another procesar()) on the same devolucion cannot also read
+        // the same PENDIENTE state and both succeed with contradictory outcomes. The
+        // second caller blocks here until the first transaction commits, then sees
+        // the updated estado and correctly hits the CONFLICT check below instead.
+        Devolucion devolucion = getForUpdateOrThrow(id);
         if (devolucion.getEstado() != DevolucionEstado.PENDIENTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden procesar devoluciones en estado pendiente");
@@ -124,7 +129,8 @@ public class DevolucionService {
 
     @Transactional
     public DevolucionResponse rechazar(Long id) {
-        Devolucion devolucion = getOrThrow(id);
+        // C-2 (AUDIT_v5): same reasoning as procesar() above.
+        Devolucion devolucion = getForUpdateOrThrow(id);
         if (devolucion.getEstado() != DevolucionEstado.PENDIENTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden rechazar devoluciones en estado pendiente");
@@ -138,7 +144,8 @@ public class DevolucionService {
 
     @Transactional
     public void delete(Long id) {
-        Devolucion devolucion = getOrThrow(id);
+        // C-2 (AUDIT_v5): same reasoning as procesar() above.
+        Devolucion devolucion = getForUpdateOrThrow(id);
         if (devolucion.getEstado() != DevolucionEstado.PENDIENTE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Solo se pueden eliminar devoluciones en estado pendiente");
@@ -151,6 +158,13 @@ public class DevolucionService {
 
     private Devolucion getOrThrow(Long id) {
         return devolucionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Devolución no encontrada"));
+    }
+
+    /** C-2 (AUDIT_v5): same not-found message as getOrThrow(), but via the locked lookup. */
+    private Devolucion getForUpdateOrThrow(Long id) {
+        return devolucionRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Devolución no encontrada"));
     }

@@ -11,6 +11,8 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,13 +43,16 @@ public class AdminUserInitializer implements ApplicationRunner {
     private final UserRepository  userRepository;
     private final RolRepository   rolRepository;
     private final PasswordEncoder passwordEncoder;
+    private final Environment     environment;
 
     public AdminUserInitializer(UserRepository userRepository,
                                 RolRepository rolRepository,
-                                PasswordEncoder passwordEncoder) {
+                                PasswordEncoder passwordEncoder,
+                                Environment environment) {
         this.userRepository  = userRepository;
         this.rolRepository   = rolRepository;
         this.passwordEncoder = passwordEncoder;
+        this.environment     = environment;
     }
 
     @Override
@@ -85,6 +90,15 @@ public class AdminUserInitializer implements ApplicationRunner {
             log.warn("║  Cambie la contraseña inmediatamente después del primer login.  ║");
             log.warn("║  En producción defina la variable de entorno ADMIN_PASSWORD.    ║");
             log.warn("╚══════════════════════════════════════════════════════════════════╝");
+
+            // M-2 (AUDIT_v5): a warning alone was insufficient — escalate to a hard
+            // startup failure outside dev/test, where leaving ADMIN_PASSWORD unset is
+            // a real production risk rather than expected local/CI convenience.
+            if (!environment.acceptsProfiles(Profiles.of("dev", "test"))) {
+                throw new IllegalStateException(
+                        "ADMIN_PASSWORD no fue configurado y el perfil activo no es 'dev' ni 'test'. "
+                        + "Defina la variable de entorno ADMIN_PASSWORD antes de iniciar la aplicación.");
+            }
         } else {
             log.info("AdminUserInitializer: usuario admin '{}' creado correctamente.", adminEmail);
         }

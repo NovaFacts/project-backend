@@ -2,9 +2,11 @@ package com.novafacts.backend.reservation.repository;
 
 import com.novafacts.backend.reservation.entity.Reservation;
 import com.novafacts.backend.reservation.entity.ReservationStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,6 +33,19 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     boolean existsByPropertyIdAndCheckInBeforeAndCheckOutAfterAndStatusAndIdNot(
             Long propertyId, LocalDate checkOut, LocalDate checkIn, ReservationStatus status, Long id);
+
+    /**
+     * H-3 (AUDIT_v5): Acquires a row-level exclusive lock (SELECT ... FOR UPDATE) on the
+     * reserva row. Used by update() before validating the current status/fields, so two
+     * concurrent updates to the same reservation cannot both read the same stale state
+     * and silently overwrite each other's changes (lost update). Mirrors
+     * PropertyRepository.findByIdForUpdate()/AnticipoRepository.findByIdForUpdate().
+     * Must be called inside an active @Transactional context; the lock is held until the
+     * surrounding transaction commits or rolls back.
+     */
+    @Query("SELECT r FROM Reservation r WHERE r.id = :id")
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
 
     @Query("SELECT COUNT(r) > 0 FROM Reservation r WHERE r.temporada.id = :temporadaId")
     boolean existsByTemporadaId(@Param("temporadaId") Integer temporadaId);

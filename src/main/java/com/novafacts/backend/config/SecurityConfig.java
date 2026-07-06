@@ -110,7 +110,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
+        // M-1 (AUDIT_v5): Spring splits a comma-separated cors.allowed-origins value into
+        // a List<String> but does not trim whitespace, so "a.com, b.com" silently produces
+        // a second origin (" b.com") that can never match a real Origin header. Trimming
+        // here, immediately before the list reaches CorsConfiguration, fixes that without
+        // touching ordering or duplicates.
+        configuration.setAllowedOrigins(allowedOrigins.stream().map(String::strip).toList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Content-Type", "Authorization"));
         configuration.setAllowCredentials(false);
