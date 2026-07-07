@@ -249,4 +249,4 @@ Script de arranque para un checkout limpio: valida `.env`, verifica Java/Node/np
 ## Documentación adicional
 
 - [`RUNNING.md`](./RUNNING.md) — guía completa paso a paso para clonar y ejecutar el proyecto desde cero.
-- [`AUDIT_v4.md`](./AUDIT_v4.md) — auditoría de seguridad y calidad de código más reciente (hallazgos, severidad, estado de resolución).
+- [`AUDIT_v5.md`](https://github.com/NovaFacts/project-docs/blob/main/audits/backend/AUDIT_v5.md) — auditoría de seguridad y calidad de código más reciente (hallazgos, severidad, estado de resolución). El historial completo de auditorías (`AUDIT.md`–`AUDIT_v5.md`) vive en [`project-docs/audits/backend/`](https://github.com/NovaFacts/project-docs/tree/main/audits/backend).
