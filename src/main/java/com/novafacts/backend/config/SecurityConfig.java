@@ -1,25 +1,30 @@
 package com.novafacts.backend.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novafacts.backend.auth.filter.JwtAuthenticationFilter;
 import com.novafacts.backend.auth.filter.LoginRateLimitFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableMethodSecurity
@@ -27,6 +32,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LoginRateLimitFilter loginRateLimitFilter;
+    private final ObjectMapper objectMapper;
 
     // Injected from application.properties: cors.allowed-origins
     // Override at runtime via CORS_ALLOWED_ORIGINS environment variable.
@@ -35,9 +41,11 @@ public class SecurityConfig {
     private List<String> allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          LoginRateLimitFilter loginRateLimitFilter) {
+                          LoginRateLimitFilter loginRateLimitFilter,
+                          ObjectMapper objectMapper) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.loginRateLimitFilter = loginRateLimitFilter;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -89,14 +97,23 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                        // Both handlers write the same {"error": "..."} shape GlobalExceptionHandler
+                        // uses for every controller-level failure. Without this, Spring Security's
+                        // filter chain (which rejects auth/authz failures before the request ever
+                        // reaches a controller) returns a zero-byte body, which the frontend cannot
+                        // distinguish from a real crash — it was showing the same generic "unexpected
+                        // error" message for an expired token as for an actual server bug.
+                        .authenticationEntryPoint((request, response, authException) ->
+                                writeJsonError(response, HttpStatus.UNAUTHORIZED,
+                                        "Tu sesión ha expirado o no es válida. Inicia sesión nuevamente."))
                         // M-14 follow-up: without an explicit AccessDeniedHandler, Spring Security's
                         // ExceptionTranslationFilter falls back to the authenticationEntryPoint (401)
                         // for AccessDeniedException too, so an authenticated-but-unauthorized request
                         // was indistinguishable from an unauthenticated one. This applies to every
                         // hasRole/hasAnyRole rule above, not just the dashboard rule added for M-14.
                         .accessDeniedHandler((request, response, accessDeniedException) ->
-                                response.setStatus(HttpStatus.FORBIDDEN.value()))
+                                writeJsonError(response, HttpStatus.FORBIDDEN,
+                                        "No tienes permisos para realizar esta acción."))
                 )
                 // Rate limiting runs first — an abusive request is rejected before JWT
                 // parsing or any other processing touches it (fail fast). It only ever
@@ -128,5 +145,16 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    // Writes the same {"error": "..."} shape GlobalExceptionHandler uses for every
+    // controller-level failure. Called from filter-level handlers (authenticationEntryPoint,
+    // accessDeniedHandler) that run outside Spring MVC's message-converter pipeline, so the
+    // body has to be written to the response directly rather than returned from a method.
+    private void writeJsonError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write(objectMapper.writeValueAsString(Map.of("error", message)));
     }
 }

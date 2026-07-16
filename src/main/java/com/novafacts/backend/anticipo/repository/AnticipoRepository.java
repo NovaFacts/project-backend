@@ -1,6 +1,7 @@
 package com.novafacts.backend.anticipo.repository;
 
 import com.novafacts.backend.anticipo.entity.Anticipo;
+import com.novafacts.backend.anticipo.entity.AnticipoEstado;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,16 @@ public interface AnticipoRepository extends JpaRepository<Anticipo, Long> {
 
     @Query("SELECT COUNT(a) > 0 FROM Anticipo a WHERE a.reserva.id = :reservaId")
     boolean existsByReservaId(@Param("reservaId") Long reservaId);
+
+    /**
+     * RF11/RF12: candidate ids for server-side aggregation in FacturaService.create() —
+     * every anticipo currently REGISTRADO for the reservation being invoiced. Unlocked;
+     * each id is individually locked afterward via findByIdForUpdate() and re-checked,
+     * so this query only needs to identify candidates, not guarantee they're still
+     * REGISTRADO by the time the caller acts on them.
+     */
+    @Query("SELECT a.id FROM Anticipo a WHERE a.reserva.id = :reservaId AND a.estado = :estado")
+    List<Long> findIdsByReservaIdAndEstado(@Param("reservaId") Long reservaId, @Param("estado") AnticipoEstado estado);
 
     /**
      * C-2: Acquires a row-level exclusive lock (SELECT ... FOR UPDATE) on the anticipo row.

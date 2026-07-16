@@ -11,6 +11,7 @@ import com.novafacts.backend.devolucion.dto.DevolucionRequest;
 import com.novafacts.backend.devolucion.repository.DevolucionRepository;
 import com.novafacts.backend.devolucion.service.DevolucionService;
 import com.novafacts.backend.factura.dto.FacturaRequest;
+import com.novafacts.backend.factura.dto.FacturaResponse;
 import com.novafacts.backend.factura.repository.FacturaRepository;
 import com.novafacts.backend.factura.service.FacturaService;
 import com.novafacts.backend.notacredito.repository.NotaCreditoRepository;
@@ -154,16 +155,17 @@ class AnticipoConcurrencyTest {
 
     @Test
     @WithMockUser(username = "contador@test.com", roles = {"CONTADOR"})
-    void concurrent_factura_and_devolucion_on_same_anticipo_only_one_succeeds() throws Exception {
+    void concurrent_factura_and_devolucion_never_both_apply_the_same_anticipo() throws Exception {
         // Captured on the test's own thread, where @WithMockUser already populated it —
         // worker threads below don't inherit SecurityContextHolder's ThreadLocal by default.
         SecurityContext sharedContext = SecurityContextHolder.getContext();
 
+        // RF11/RF12/Phase 3: FacturaService now discovers and applies every REGISTRADO
+        // anticipo itself and reads subtotal from the reservation's own montoTotal
+        // (800000.00, set in setUp()) — there is nothing left on the request to set
+        // besides reservaId.
         FacturaRequest facturaRequest = new FacturaRequest();
         facturaRequest.setReservaId(savedReservation.getId());
-        facturaRequest.setSubtotal(new BigDecimal("800000.00"));
-        facturaRequest.setDescuentoAnticipo(new BigDecimal("300000.00"));
-        facturaRequest.setAnticipoId(savedAnticipo.getId());
 
         DevolucionRequest devolucionRequest = new DevolucionRequest();
         devolucionRequest.setReservaId(savedReservation.getId());
@@ -212,26 +214,107 @@ class AnticipoConcurrencyTest {
         boolean facturaSucceeded = !(facturaResult instanceof ResponseStatusException);
         boolean devolucionSucceeded = !(devolucionResult instanceof ResponseStatusException);
 
-        // Exactly one of the two operations must win — never both (the C-2 bug), never neither.
-        assertTrue(facturaSucceeded ^ devolucionSucceeded,
-                "Expected exactly one of factura-apply/devolucion to succeed, but factura="
-                        + facturaSucceeded + " devolucion=" + devolucionSucceeded);
+        Anticipo finalAnticipo = anticipoRepository.findById(savedAnticipo.getId()).orElseThrow();
 
-        if (!facturaSucceeded) {
-            assertInstanceOf(ResponseStatusException.class, facturaResult);
-            assertEquals(HttpStatus.CONFLICT, ((ResponseStatusException) facturaResult).getStatusCode());
-        }
-        if (!devolucionSucceeded) {
+        // Unlike a single-anticipoId request, FacturaService.create() no longer asserts
+        // "this specific anticipo must still be REGISTRADO" — it collects whatever is
+        // currently REGISTRADO and applies it. So factura creation itself does not fail
+        // just because devolucion won the race for this one anticipo; it simply excludes
+        // it from the discount. What must never happen is the anticipo ending up counted
+        // by both operations.
+        if (finalAnticipo.getEstado() == AnticipoEstado.APLICADO) {
+            // Factura won the lock race first.
+            assertTrue(facturaSucceeded, "Factura should succeed when it wins the anticipo lock");
             assertInstanceOf(ResponseStatusException.class, devolucionResult);
             assertEquals(HttpStatus.CONFLICT, ((ResponseStatusException) devolucionResult).getStatusCode());
+
+            FacturaResponse factura = (FacturaResponse) facturaResult;
+            assertEquals(0, new BigDecimal("300000.00").compareTo(factura.getDescuentoAnticipo()));
+        } else {
+            // Devolucion won the lock race first — anticipo is DEVUELTO.
+            assertEquals(AnticipoEstado.DEVUELTO, finalAnticipo.getEstado());
+            assertTrue(devolucionSucceeded, "Devolucion should succeed when it wins the anticipo lock");
+            assertTrue(facturaSucceeded,
+                    "Factura creation must still succeed even when the anticipo was refunded first — "
+                            + "it should just exclude it from the discount, not fail");
+
+            FacturaResponse factura = (FacturaResponse) facturaResult;
+            assertEquals(0, BigDecimal.ZERO.compareTo(factura.getDescuentoAnticipo()));
         }
 
-        // Final DB state must reflect exactly the winning operation, never both.
-        assertEquals(facturaSucceeded ? 1 : 0, facturaRepository.count());
+        // Whichever way the race went, the anticipo was mutated by exactly one operation.
+        assertEquals(1, facturaRepository.count());
         assertEquals(devolucionSucceeded ? 1 : 0, devolucionRepository.count());
+    }
 
+    @Test
+    @WithMockUser(username = "contador@test.com", roles = {"CONTADOR"})
+    void concurrent_factura_creations_for_same_reservation_apply_anticipo_exactly_once() throws Exception {
+        // RF11/RF12 concurrency requirement: two simultaneous invoice-creation attempts
+        // for the same reservation must never both apply savedAnticipo, and whichever
+        // attempt ultimately fails (rejected either by the existsByReservaId check or by
+        // the DB's unique constraint on factura.reserva_id) must leave no trace — no
+        // partial anticipo mutation survives a losing transaction.
+        SecurityContext sharedContext = SecurityContextHolder.getContext();
+
+        FacturaRequest requestA = new FacturaRequest();
+        requestA.setReservaId(savedReservation.getId());
+
+        FacturaRequest requestB = new FacturaRequest();
+        requestB.setReservaId(savedReservation.getId());
+
+        CountDownLatch readyLatch = new CountDownLatch(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        Callable<Object> taskA = () -> {
+            SecurityContextHolder.setContext(sharedContext);
+            readyLatch.countDown();
+            startLatch.await();
+            try {
+                return facturaService.create(requestA);
+            } catch (RuntimeException e) {
+                return e;
+            }
+        };
+        Callable<Object> taskB = () -> {
+            SecurityContextHolder.setContext(sharedContext);
+            readyLatch.countDown();
+            startLatch.await();
+            try {
+                return facturaService.create(requestB);
+            } catch (RuntimeException e) {
+                return e;
+            }
+        };
+
+        Future<Object> futureA = executor.submit(taskA);
+        Future<Object> futureB = executor.submit(taskB);
+
+        readyLatch.await(5, TimeUnit.SECONDS);
+        startLatch.countDown();
+
+        Object resultA = futureA.get(10, TimeUnit.SECONDS);
+        Object resultB = futureB.get(10, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        boolean succeededA = resultA instanceof FacturaResponse;
+        boolean succeededB = resultB instanceof FacturaResponse;
+
+        // The DB's unique constraint on factura.reserva_id guarantees exactly one wins,
+        // regardless of how the two transactions interleave around the anticipo lock.
+        assertTrue(succeededA ^ succeededB,
+                "Expected exactly one concurrent factura creation to succeed, but A=" + succeededA + " B=" + succeededB);
+
+        assertEquals(1, facturaRepository.count());
+
+        FacturaResponse winner = (FacturaResponse) (succeededA ? resultA : resultB);
+        assertEquals(0, new BigDecimal("300000.00").compareTo(winner.getDescuentoAnticipo()));
+
+        // The anticipo was consumed by exactly the winning transaction — the loser's
+        // attempt to apply it (if it got there first) was rolled back along with its
+        // failed Factura insert, never left half-applied.
         Anticipo finalAnticipo = anticipoRepository.findById(savedAnticipo.getId()).orElseThrow();
-        assertEquals(facturaSucceeded ? AnticipoEstado.APLICADO : AnticipoEstado.DEVUELTO,
-                finalAnticipo.getEstado());
+        assertEquals(AnticipoEstado.APLICADO, finalAnticipo.getEstado());
     }
 }
